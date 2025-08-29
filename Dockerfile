@@ -1,0 +1,67 @@
+# Multi-stage build for Spring Boot application
+FROM maven:3.9.6-eclipse-temurin-21 AS build
+
+# Set working directory
+WORKDIR /app
+
+# Copy pom.xml first
+COPY pom.xml .
+
+# Copy the local yt-dlp-java JAR file
+COPY yt-dlp-java-2.0.3.jar .
+
+# Install the local JAR into local Maven repository
+RUN mvn install:install-file \
+    -Dfile=yt-dlp-java-2.0.3.jar \
+    -DgroupId=com.jfposton \
+    -DartifactId=yt-dlp-java \
+    -Dversion=2.0.3 \
+    -Dpackaging=jar
+
+# Download other dependencies
+RUN mvn dependency:go-offline -B
+
+# Copy source code
+COPY src ./src
+
+# Build the application
+RUN mvn clean package -DskipTests
+
+# Runtime stage
+FROM eclipse-temurin:21-jre-jammy
+
+# Install curl and yt-dlp
+RUN apt-get update && apt-get install -y \
+    curl \
+    python3 \
+    python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install yt-dlp using pip (alternative method)
+RUN pip3 install --no-cache-dir yt-dlp \
+    && yt-dlp --version
+
+# Set working directory
+WORKDIR /app
+
+# Create non-root user
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Copy the built JAR from build stage
+COPY --from=build /app/target/tg-yt-downloader-0.0.1-SNAPSHOT.jar app.jar
+
+# Change ownership to non-root user
+RUN chown appuser:appuser app.jar
+
+# Switch to non-root user
+USER appuser
+
+# Expose port
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:8080/api/video/health || exit 1
+
+# Run the application
+ENTRYPOINT ["java", "-jar", "app.jar"]
