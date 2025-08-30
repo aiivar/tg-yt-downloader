@@ -6,9 +6,11 @@ A Spring Boot application that provides video metadata retrieval functionality u
 
 - Retrieve comprehensive video metadata from YouTube and other supported platforms
 - Download videos in MP4 format with 720p resolution
-- Mock upload to Telegram file server
+- Real upload to Telegram file server with file ID retrieval
 - Automatic temp directory management and cleanup
+- Database storage of video URLs and Telegram file IDs
 - RESTful API endpoints for metadata retrieval and video downloading
+- Telegram Bot API integration with health checks
 - Docker support for easy deployment
 - Comprehensive error handling and logging
 
@@ -81,6 +83,20 @@ GET /api/video/download/{downloadId}/status
 ```
 
 Returns the current status of a download operation using the download ID.
+
+### Check Telegram API Health
+```
+GET /api/video/telegram/health
+```
+
+Returns the health status of the Telegram Bot API connection.
+
+### Get Telegram File Info
+```
+GET /api/video/telegram/file/{fileId}
+```
+
+Returns information about a file stored in Telegram using its file ID.
 
 ## Response Format
 
@@ -190,7 +206,19 @@ If an error occurs during metadata retrieval, the response will include an `erro
 ### Using Docker (Recommended)
 
 1. Ensure you have the `yt-dlp-java-2.0.3.jar` file in the project root directory
-2. Build and run using Docker Compose:
+2. Set up environment variables:
+
+```bash
+# Option A: Export environment variables
+export TELEGRAM_BOT_TOKEN=1234567890:ABCdefGHIjklMNOpqrsTUVwxyz
+export TELEGRAM_CHAT_ID=123456789
+
+# Option B: Use .env file
+cp env.example .env
+# Edit .env file with your actual values
+```
+
+3. Build and run using Docker Compose:
 
 ```bash
 docker-compose up --build
@@ -248,6 +276,42 @@ The application creates temporary directories for video downloads in the system'
 - **Fallback**: Defaults to `/tmp` if system temp directory is not available
 
 The temp directories are automatically cleaned up after each download operation.
+
+### Telegram Bot Configuration
+
+The application requires Telegram Bot configuration for file uploads:
+
+1. **Create a Telegram Bot**:
+   - Message @BotFather on Telegram
+   - Use `/newbot` command
+   - Follow instructions to create your bot
+   - Save the bot token
+
+2. **Get Chat ID**:
+   - Start a chat with your bot
+   - Send a message to the bot
+   - Access: `https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates`
+   - Find your chat ID in the response
+
+3. **Configure Application**:
+
+   **Option A: Environment Variables (Recommended)**
+   ```bash
+   export TELEGRAM_BOT_TOKEN=1234567890:ABCdefGHIjklMNOpqrsTUVwxyz
+   export TELEGRAM_CHAT_ID=123456789
+   ```
+
+   **Option B: .env file**
+   ```bash
+   cp env.example .env
+   # Edit .env file with your actual values
+   ```
+
+   **Option C: application.properties (for local development only)**
+   ```properties
+   telegram.bot.token=1234567890:ABCdefGHIjklMNOpqrsTUVwxyz
+   telegram.chat.id=123456789
+   ```
 
 ## Logging
 

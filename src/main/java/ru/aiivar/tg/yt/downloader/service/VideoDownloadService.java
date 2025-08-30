@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import ru.aiivar.tg.yt.downloader.model.VideoDownloadRequest;
 import ru.aiivar.tg.yt.downloader.model.VideoDownloadResponse;
 import ru.aiivar.tg.yt.downloader.repository.VideoRepository;
+import ru.aiivar.tg.yt.downloader.entity.Video;
 
 import java.io.File;
 import java.io.IOException;
@@ -41,6 +42,12 @@ public class VideoDownloadService {
     @Autowired
     private VideoRepository videoRepository;
 
+    @Autowired
+    private EntityFactory entityFactory;
+
+    @Autowired
+    private TelegramFileService telegramFileService;
+
     public VideoDownloadResponse downloadVideo(VideoDownloadRequest request) {
         String downloadId = UUID.randomUUID().toString();
         logger.info("Starting video download with ID: {} for URL: {}", downloadId, request.getUrl());
@@ -57,13 +64,16 @@ public class VideoDownloadService {
             downloadedFile = downloadVideoFile(request, tempDir, downloadId);
             logger.info("Video downloaded successfully: {}", downloadedFile.getAbsolutePath());
             
-            // Mock upload to Telegram
-            String telegramFileId = mockUploadToTelegram(downloadedFile, downloadId);
-            logger.info("Mock upload to Telegram completed with file ID: {}", telegramFileId);
+            // Upload to Telegram
+            String telegramFileId = uploadToTelegram(downloadedFile, downloadId, request.getUrl());
+            logger.info("Upload to Telegram completed with file ID: {}", telegramFileId);
             
             // Get file size
             long fileSize = downloadedFile.length();
             logger.info("File size: {} bytes", fileSize);
+            
+            // Save to database
+            saveVideoToDatabase(request.getUrl(), telegramFileId, downloadedFile.getName(), fileSize);
             
             return VideoDownloadResponse.builder()
                     .success(true)
@@ -156,25 +166,45 @@ public class VideoDownloadService {
         return downloadedFile;
     }
 
-    private String mockUploadToTelegram(File file, String downloadId) {
-        logger.info("Starting mock upload to Telegram for file: {} with download ID: {}", 
+    private String uploadToTelegram(File file, String downloadId, String originalUrl) {
+        logger.info("Starting upload to Telegram for file: {} with download ID: {}", 
                    file.getName(), downloadId);
         
         try {
-            // Simulate upload delay
-            Thread.sleep(1000);
+            // Create caption for the video
+            String caption = String.format("Video downloaded from: %s\nDownload ID: %s", 
+                                         originalUrl, downloadId);
             
-            // Generate mock Telegram file ID
-            String telegramFileId = "mock_tg_" + downloadId + "_" + System.currentTimeMillis();
+            // Upload video to Telegram
+            String telegramFileId = telegramFileService.uploadVideoToTelegram(file, caption);
             
-            logger.info("Mock upload completed. Generated Telegram file ID: {}", telegramFileId);
+            logger.info("Upload to Telegram completed. File ID: {}", telegramFileId);
             
             return telegramFileId;
             
-        } catch (InterruptedException e) {
-            logger.error("Mock upload interrupted for download ID: {}", downloadId, e);
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("Upload interrupted", e);
+        } catch (IOException e) {
+            logger.error("Failed to upload file to Telegram for download ID: {}", downloadId, e);
+            throw new RuntimeException("Failed to upload to Telegram: " + e.getMessage(), e);
+        }
+    }
+
+    private void saveVideoToDatabase(String url, String telegramFileId, String fileName, long fileSize) {
+        logger.info("Saving video to database - URL: {}, File ID: {}, File: {}", 
+                   url, telegramFileId, fileName);
+        
+        try {
+            Video video = entityFactory.newEntity(Video.class);
+            video.setUrl(url);
+            video.setFileId(telegramFileId);
+            
+            videoRepository.save(video);
+            
+            logger.info("Video saved to database successfully. ID: {}", video.getId());
+            
+        } catch (Exception e) {
+            logger.error("Failed to save video to database", e);
+            // Don't throw exception here to avoid breaking the download process
+            // The file is already uploaded to Telegram
         }
     }
 
