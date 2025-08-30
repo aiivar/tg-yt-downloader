@@ -26,9 +26,17 @@ public class VideoDownloadService {
 
     private static final Logger logger = LoggerFactory.getLogger(VideoDownloadService.class);
     
-    private static final String TEMP_DIR = "temp_downloads";
+    private static final String TEMP_DIR = getTempDirectory();
     private static final String MP4_FORMAT = "mp4";
     private static final String RESOLUTION_720P = "720p";
+
+    private static String getTempDirectory() {
+        String tempDir = System.getProperty("java.io.tmpdir");
+        if (tempDir == null || tempDir.isEmpty()) {
+            tempDir = "/tmp";
+        }
+        return tempDir + "/temp_downloads";
+    }
 
     @Autowired
     private VideoRepository videoRepository;
@@ -81,14 +89,28 @@ public class VideoDownloadService {
 
     private Path createTempDirectory(String downloadId) throws IOException {
         logger.info("Creating temp directory for download ID: {}", downloadId);
+        logger.info("Base temp directory: {}", TEMP_DIR);
         
-        Path tempDir = Paths.get(TEMP_DIR, downloadId);
-        if (!Files.exists(tempDir)) {
-            Files.createDirectories(tempDir);
-            logger.info("Created temp directory: {}", tempDir.toAbsolutePath());
+        try {
+            Path tempDir = Paths.get(TEMP_DIR, downloadId);
+            
+            // Ensure the base temp directory exists
+            Path baseTempDir = Paths.get(TEMP_DIR);
+            if (!Files.exists(baseTempDir)) {
+                logger.info("Creating base temp directory: {}", baseTempDir.toAbsolutePath());
+                Files.createDirectories(baseTempDir);
+            }
+            
+            if (!Files.exists(tempDir)) {
+                Files.createDirectories(tempDir);
+                logger.info("Created temp directory: {}", tempDir.toAbsolutePath());
+            }
+            
+            return tempDir;
+        } catch (IOException e) {
+            logger.error("Failed to create temp directory for download ID: {}", downloadId, e);
+            throw new IOException("Failed to create temp directory: " + e.getMessage(), e);
         }
-        
-        return tempDir;
     }
 
     private File downloadVideoFile(VideoDownloadRequest request, Path tempDir, String downloadId) throws YtDlpException {

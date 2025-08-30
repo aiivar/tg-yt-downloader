@@ -240,6 +240,15 @@ The application uses Spring Boot's auto-configuration. Key configuration files:
 - `application.properties` - Main configuration
 - `application-docker.properties` - Docker-specific configuration
 
+### Temp Directory Configuration
+
+The application creates temporary directories for video downloads in the system's temp directory:
+- **Local development**: Uses `java.io.tmpdir` system property
+- **Docker**: Uses `/tmp/temp_downloads` directory with proper permissions
+- **Fallback**: Defaults to `/tmp` if system temp directory is not available
+
+The temp directories are automatically cleaned up after each download operation.
+
 ## Logging
 
 The application uses SLF4J with Logback for logging. Log levels can be configured in `application.properties`:

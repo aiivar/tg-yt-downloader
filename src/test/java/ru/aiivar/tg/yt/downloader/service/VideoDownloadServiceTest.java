@@ -10,6 +10,11 @@ import ru.aiivar.tg.yt.downloader.model.VideoDownloadRequest;
 import ru.aiivar.tg.yt.downloader.model.VideoDownloadResponse;
 import ru.aiivar.tg.yt.downloader.repository.VideoRepository;
 
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -66,5 +71,25 @@ class VideoDownloadServiceTest {
         assertEquals("mp4", request.getFormat());
         assertEquals("720p", request.getResolution());
         assertEquals("best", request.getQuality());
+    }
+
+    @Test
+    void testTempDirectoryCreation() {
+        // Test that the temp directory path is properly constructed
+        String tempDir = System.getProperty("java.io.tmpdir");
+        assertNotNull(tempDir);
+        assertTrue(tempDir.length() > 0);
+        
+        // Test that we can create a test directory
+        try {
+            Path testDir = Paths.get(tempDir, "test_temp_dir");
+            Files.createDirectories(testDir);
+            assertTrue(Files.exists(testDir));
+            
+            // Clean up
+            Files.deleteIfExists(testDir);
+        } catch (Exception e) {
+            fail("Should be able to create temp directory: " + e.getMessage());
+        }
     }
 }

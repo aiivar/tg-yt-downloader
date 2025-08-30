@@ -47,6 +47,9 @@ WORKDIR /app
 # Create non-root user
 RUN groupadd -r appuser && useradd -r -g appuser appuser
 
+# Create temp directory with proper permissions
+RUN mkdir -p /tmp/temp_downloads && chown -R appuser:appuser /tmp/temp_downloads
+
 # Copy the built JAR from build stage
 COPY --from=build /app/target/tg-yt-downloader-0.0.1-SNAPSHOT.jar app.jar
 
