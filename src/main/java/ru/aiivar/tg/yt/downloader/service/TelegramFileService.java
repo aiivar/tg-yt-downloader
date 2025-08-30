@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
@@ -28,10 +29,47 @@ public class TelegramFileService {
     @Value("${telegram.chat.id}")
     private String chatId;
 
+    @Value("${telegram.api.use.local:false}")
+    private boolean useLocalApi;
+
+    @Value("${telegram.api.local.url:http://localhost:8081}")
+    private String localApiUrl;
+
+    @Value("${telegram.api.local.credentials.path:/path/to/credentials.json}")
+    private String localCredentialsPath;
+
     private final RestTemplate restTemplate;
 
     public TelegramFileService() {
         this.restTemplate = new RestTemplate();
+    }
+
+    /**
+     * Получает базовый URL для API запросов
+     * @return URL для API запросов
+     */
+    private String getApiBaseUrl() {
+        if (useLocalApi) {
+            logger.info("Using local Telegram Bot API server: {}", localApiUrl);
+            return localApiUrl;
+        } else {
+            logger.info("Using official Telegram Bot API server");
+            return "https://api.telegram.org";
+        }
+    }
+
+    /**
+     * Строит полный URL для API запроса
+     * @param endpoint endpoint API (например, "sendVideo", "sendDocument")
+     * @return полный URL для запроса
+     */
+    private String buildApiUrl(String endpoint) {
+        String baseUrl = getApiBaseUrl();
+        return UriComponentsBuilder.fromHttpUrl(baseUrl)
+                .path("/bot{token}/")
+                .path(endpoint)
+                .buildAndExpand(botToken)
+                .toUriString();
     }
 
     /**
@@ -45,7 +83,7 @@ public class TelegramFileService {
         logger.info("Starting file upload to Telegram: {}", file.getName());
         
         try {
-            String url = String.format("https://api.telegram.org/bot%s/sendDocument", botToken);
+            String url = buildApiUrl("sendDocument");
             
             // Создаем заголовки для multipart запроса
             HttpHeaders headers = new HttpHeaders();
@@ -115,7 +153,7 @@ public class TelegramFileService {
         logger.info("Starting video upload to Telegram: {}", file.getName());
         
         try {
-            String url = String.format("https://api.telegram.org/bot%s/sendVideo", botToken);
+            String url = buildApiUrl("sendVideo");
             
             // Создаем заголовки для multipart запроса
             HttpHeaders headers = new HttpHeaders();
@@ -183,7 +221,7 @@ public class TelegramFileService {
         logger.info("Getting file info for file ID: {}", fileId);
         
         try {
-            String url = String.format("https://api.telegram.org/bot%s/getFile", botToken);
+            String url = buildApiUrl("getFile");
             
             Map<String, String> requestBody = new HashMap<>();
             requestBody.put("file_id", fileId);
@@ -224,6 +262,94 @@ public class TelegramFileService {
     }
 
     /**
+     * Проверяет, нужно ли использовать локальный API для файла данного размера
+     * @param fileSize размер файла в байтах
+     * @return true если нужно использовать локальный API
+     */
+    private boolean shouldUseLocalApi(long fileSize) {
+        long maxOfficialApiSize = 50 * 1024 * 1024; // 50 MB
+        return useLocalApi && fileSize > maxOfficialApiSize;
+    }
+
+    /**
+     * Отправляет большой файл (до 2GB) через локальный Bot API сервер
+     * @param file файл для отправки
+     * @param caption подпись к файлу
+     * @param isVideo true если это видео файл
+     * @return fileId полученный от Telegram
+     * @throws IOException если произошла ошибка при работе с файлом
+     */
+    public String uploadLargeFileToTelegram(File file, String caption, boolean isVideo) throws IOException {
+        if (!useLocalApi) {
+            throw new IOException("Local Bot API server is not configured. Cannot upload large files.");
+        }
+
+        logger.info("Uploading large file to local Telegram Bot API: {} ({} MB)", 
+                   file.getName(), file.length() / (1024 * 1024));
+
+        try {
+            String endpoint = isVideo ? "sendVideo" : "sendDocument";
+            String url = buildApiUrl(endpoint);
+
+            // Создаем заголовки для multipart запроса
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+            // Создаем multipart данные
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+
+            // Добавляем chat_id
+            body.add("chat_id", chatId);
+
+            // Добавляем файл
+            String fileField = isVideo ? "video" : "document";
+            body.add(fileField, new org.springframework.core.io.FileSystemResource(file));
+
+            // Добавляем подпись если она есть
+            if (caption != null && !caption.trim().isEmpty()) {
+                body.add("caption", caption);
+            }
+
+            // Создаем HTTP entity
+            HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+
+            logger.info("Sending large file to local Telegram Bot API: {}", url);
+
+            // Отправляем запрос
+            ResponseEntity<Map> response = restTemplate.exchange(
+                url,
+                HttpMethod.POST,
+                requestEntity,
+                Map.class
+            );
+
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                Map<String, Object> responseBody = response.getBody();
+
+                if (Boolean.TRUE.equals(responseBody.get("ok"))) {
+                    Map<String, Object> result = (Map<String, Object>) responseBody.get("result");
+                    Map<String, Object> fileData = (Map<String, Object>) result.get(isVideo ? "video" : "document");
+                    String fileId = (String) fileData.get("file_id");
+
+                    logger.info("Large file uploaded successfully to local Telegram Bot API. File ID: {}", fileId);
+                    return fileId;
+                } else {
+                    String errorDescription = (String) responseBody.get("description");
+                    logger.error("Local Telegram Bot API returned error: {}", errorDescription);
+                    throw new IOException("Local Telegram Bot API error: " + errorDescription);
+                }
+            } else {
+                logger.error("Unexpected response from local Telegram Bot API: {}", response.getStatusCode());
+                throw new IOException("Unexpected response from local Telegram Bot API: " + response.getStatusCode());
+            }
+
+        } catch (Exception e) {
+            logger.error("Error uploading large file to local Telegram Bot API: {}", file.getName(), e);
+            throw new IOException("Failed to upload large file to local Telegram Bot API: " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * Проверяет доступность Telegram Bot API
      * @return true если API доступен, false в противном случае
      */
@@ -231,7 +357,7 @@ public class TelegramFileService {
         logger.info("Checking Telegram Bot API health");
         
         try {
-            String url = String.format("https://api.telegram.org/bot%s/getMe", botToken);
+            String url = buildApiUrl("getMe");
             
             ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
             
@@ -256,5 +382,18 @@ public class TelegramFileService {
             logger.error("Error checking Telegram Bot API health", e);
             return false;
         }
+    }
+
+    // Getters for configuration
+    public boolean isUseLocalApi() {
+        return useLocalApi;
+    }
+
+    public String getLocalApiUrl() {
+        return localApiUrl;
+    }
+
+    public String getLocalCredentialsPath() {
+        return localCredentialsPath;
     }
 }

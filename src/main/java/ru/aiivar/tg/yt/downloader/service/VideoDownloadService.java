@@ -64,7 +64,7 @@ public class VideoDownloadService {
             downloadedFile = downloadVideoFile(request, tempDir, downloadId);
             logger.info("Video downloaded successfully: {}", downloadedFile.getAbsolutePath());
             
-            // Upload to Telegram
+            // Upload to Telegram (with automatic API selection for large files)
             String telegramFileId = uploadToTelegram(downloadedFile, downloadId, request.getUrl());
             logger.info("Upload to Telegram completed with file ID: {}", telegramFileId);
             
@@ -145,7 +145,7 @@ public class VideoDownloadService {
         
         logger.info("Executing yt-dlp with format: {}", format);
         
-        YtDlpResponse response = YtDlp.execute(ytRequest);
+        YtDlpResponse response = YtDlp.execute(ytRequest, (progress, etaInSeconds) -> logger.info("ID:{}. Progress: {}, time: {} sec.", downloadId, progress, etaInSeconds));
         
         if (response.getExitCode() != 0) {
             logger.error("yt-dlp failed with exit code: {} for download ID: {}", response.getExitCode(), downloadId);
@@ -175,8 +175,21 @@ public class VideoDownloadService {
             String caption = String.format("Video downloaded from: %s\nDownload ID: %s", 
                                          originalUrl, downloadId);
             
-            // Upload video to Telegram
-            String telegramFileId = telegramFileService.uploadVideoToTelegram(file, caption);
+            long fileSize = file.length();
+            long maxOfficialApiSize = 50 * 1024 * 1024; // 50 MB
+            
+            String telegramFileId;
+            
+            // Check if we should use local API for large files
+            if (fileSize > maxOfficialApiSize) {
+                logger.info("File size {} MB exceeds 50MB limit, using local Bot API server", 
+                           fileSize / (1024 * 1024));
+                telegramFileId = telegramFileService.uploadLargeFileToTelegram(file, caption, true);
+            } else {
+                logger.info("File size {} MB is within 50MB limit, using official API", 
+                           fileSize / (1024 * 1024));
+                telegramFileId = telegramFileService.uploadVideoToTelegram(file, caption);
+            }
             
             logger.info("Upload to Telegram completed. File ID: {}", telegramFileId);
             

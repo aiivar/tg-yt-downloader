@@ -94,6 +94,19 @@ public class VideoController {
         }
     }
 
+    @GetMapping("/telegram/config")
+    public ResponseEntity<Map<String, Object>> getTelegramConfig() {
+        logger.info("Received Telegram configuration request");
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("useLocalApi", telegramFileService.isUseLocalApi());
+        response.put("localApiUrl", telegramFileService.getLocalApiUrl());
+        response.put("maxFileSize", "2GB (with local API) / 50MB (official API)");
+        response.put("timestamp", System.currentTimeMillis());
+        
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/telegram/file/{fileId}")
     public ResponseEntity<Map<String, Object>> getFileInfo(@PathVariable String fileId) {
         logger.info("Received file info request for file ID: {}", fileId);
