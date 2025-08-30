@@ -19,6 +19,7 @@ public class VideoFormat {
     private String vcodec;
     private String acodec;
     private String fps;
+    private String channels;
     private String vbr; // Video bitrate
     private String abr; // Audio bitrate
     private String asr; // Audio sample rate
