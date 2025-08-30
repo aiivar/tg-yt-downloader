@@ -32,3 +32,17 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Environment Variables ###
+.env
+.env.local
+.env.production
+.env.staging
+
+### Logs ###
+*.log
+logs/
+
+### Temp Files ###
+temp_downloads/
+/tmp/

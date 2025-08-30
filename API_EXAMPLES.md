@@ -221,6 +221,61 @@ def download_video(url):
 download_video('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
 ```
 
+## Telegram API Examples
+
+### 1. Check Telegram Bot API Health
+
+**Request:**
+```bash
+curl -X GET http://localhost:8080/api/video/telegram/health
+```
+
+**Response:**
+```json
+{
+  "healthy": true,
+  "timestamp": 1705312345678
+}
+```
+
+### 2. Get File Information
+
+**Request:**
+```bash
+curl -X GET http://localhost:8080/api/video/telegram/file/BAACAgIAAxkBAAIBQ2WX_1234567890
+```
+
+**Response:**
+```json
+{
+  "file_id": "BAACAgIAAxkBAAIBQ2WX_1234567890",
+  "file_unique_id": "AgADBUNll_1234567890",
+  "file_size": 45678901,
+  "file_path": "videos/file_123.mp4"
+}
+```
+
+## Environment Setup
+
+Before using the API, make sure to configure your Telegram Bot credentials:
+
+### Option 1: Environment Variables
+```bash
+export TELEGRAM_BOT_TOKEN=1234567890:ABCdefGHIjklMNOpqrsTUVwxyz
+export TELEGRAM_CHAT_ID=123456789
+```
+
+### Option 2: .env File
+```bash
+cp env.example .env
+# Edit .env file with your actual values
+```
+
+### Option 3: Docker with Environment Variables
+```bash
+docker-compose up -e TELEGRAM_BOT_TOKEN=1234567890:ABCdefGHIjklMNOpqrsTUVwxyz -e TELEGRAM_CHAT_ID=123456789
+```
+
 ## Logging Information
 
 The application provides comprehensive logging for all download operations. You can monitor the logs to track:
@@ -229,7 +284,8 @@ The application provides comprehensive logging for all download operations. You 
 - Temp directory creation
 - yt-dlp execution
 - File download progress
-- Mock Telegram upload
+- Real Telegram upload with file ID retrieval
+- Database storage operations
 - Temp directory cleanup
 - Error handling
 
