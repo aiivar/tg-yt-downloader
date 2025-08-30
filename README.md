@@ -5,7 +5,10 @@ A Spring Boot application that provides video metadata retrieval functionality u
 ## Features
 
 - Retrieve comprehensive video metadata from YouTube and other supported platforms
-- RESTful API endpoints for metadata retrieval
+- Download videos in MP4 format with 720p resolution
+- Mock upload to Telegram file server
+- Automatic temp directory management and cleanup
+- RESTful API endpoints for metadata retrieval and video downloading
 - Docker support for easy deployment
 - Comprehensive error handling and logging
 
@@ -53,7 +56,46 @@ Returns a list of available video formats for the given URL, including:
 - FPS (frames per second)
 - Additional format information
 
+### Download Video
+```
+POST /api/video/download
+Content-Type: application/json
+
+{
+  "url": "https://www.youtube.com/watch?v=VIDEO_ID",
+  "format": "mp4",
+  "resolution": "720p",
+  "quality": "best"
+}
+```
+
+Downloads a video in MP4 format with 720p resolution and uploads it to Telegram file server. Returns:
+- Download ID for tracking
+- File name and size
+- Telegram file ID
+- Success/error status
+
+### Get Download Status
+```
+GET /api/video/download/{downloadId}/status
+```
+
+Returns the current status of a download operation using the download ID.
+
 ## Response Format
+
+### Video Download Response
+```json
+{
+  "success": true,
+  "message": "Video downloaded and uploaded successfully",
+  "downloadId": "550e8400-e29b-41d4-a716-446655440000",
+  "fileName": "video_title.mp4",
+  "fileSize": 12345678,
+  "telegramFileId": "mock_tg_550e8400-e29b-41d4-a716-446655440000_1234567890",
+  "error": null
+}
+```
 
 ### Video Metadata Response
 ```json
