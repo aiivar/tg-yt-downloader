@@ -35,8 +35,27 @@ Returns comprehensive video metadata including:
 - Format information (resolution, fps, codecs)
 - File size and other technical details
 
+### Get Video Formats
+```
+POST /api/video/formats
+Content-Type: application/json
+
+{
+  "url": "https://www.youtube.com/watch?v=VIDEO_ID"
+}
+```
+
+Returns a list of available video formats for the given URL, including:
+- Format ID, extension, resolution
+- File size, total bitrate
+- Video codec, video bitrate
+- Audio codec, audio bitrate, audio sample rate
+- FPS (frames per second)
+- Additional format information
+
 ## Response Format
 
+### Video Metadata Response
 ```json
 {
   "title": "Video Title",
@@ -68,6 +87,46 @@ Returns comprehensive video metadata including:
   "acodec": "opus",
   "filesize": 12345678,
   "error": null
+}
+```
+
+### Video Formats Response
+```json
+{
+  "formats": [
+    {
+      "formatId": "22",
+      "extension": "mp4",
+      "resolution": "1280x720",
+      "note": "",
+      "filesize": "50.12MiB",
+      "tbr": "1.2MiB/s",
+      "vcodec": "avc1.4d401f",
+      "acodec": "mp4a.40.2",
+      "fps": "30",
+      "vbr": "1.2MiB/s",
+      "abr": "128k",
+      "asr": "44kHz",
+      "moreInfo": "720p, mp4_dash"
+    },
+    {
+      "formatId": "18",
+      "extension": "mp4",
+      "resolution": "640x360",
+      "note": "",
+      "filesize": "25.06MiB",
+      "tbr": "600KiB/s",
+      "vcodec": "avc1.42001E",
+      "acodec": "mp4a.40.2",
+      "fps": "30",
+      "vbr": "600KiB/s",
+      "abr": "96k",
+      "asr": "44kHz",
+      "moreInfo": "360p, mp4_dash"
+    }
+  ],
+  "error": null,
+  "url": "https://www.youtube.com/watch?v=VIDEO_ID"
 }
 ```
 

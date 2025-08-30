@@ -10,10 +10,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import ru.aiivar.tg.yt.downloader.model.VideoMetadataRequest;
 import ru.aiivar.tg.yt.downloader.model.VideoMetadataResponse;
+import ru.aiivar.tg.yt.downloader.model.VideoFormatsResponse;
+import ru.aiivar.tg.yt.downloader.model.VideoFormat;
 import ru.aiivar.tg.yt.downloader.repository.VideoRepository;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -55,6 +58,148 @@ public class VideoMetadataService {
             return VideoMetadataResponse.builder()
                     .error("Unexpected error: " + e.getMessage())
                     .build();
+        }
+    }
+
+    public VideoFormatsResponse getFormats(VideoMetadataRequest request) {
+        try {
+            logger.info("Retrieving formats for URL: {}", request.getUrl());
+
+            YtDlpRequest ytRequest = new YtDlpRequest(request.getUrl());
+            ytRequest.setOption("list-formats");
+            ytRequest.setOption("no-playlist");
+
+            YtDlpResponse response = YtDlp.execute(ytRequest);
+
+            if (response.getExitCode() != 0) {
+                logger.error("yt-dlp failed with exit code: {} for URL: {}", response.getExitCode(), request.getUrl());
+                return VideoFormatsResponse.builder()
+                        .error("Failed to retrieve video formats: " + response.getErr())
+                        .url(request.getUrl())
+                        .build();
+            }
+
+            String formatsOutput = response.getOut();
+            return parseVideoFormats(formatsOutput, request.getUrl());
+
+        } catch (YtDlpException e) {
+            logger.error("YoutubeDLException for URL: {}", request.getUrl(), e);
+            return VideoFormatsResponse.builder()
+                    .error("Error retrieving formats: " + e.getMessage())
+                    .url(request.getUrl())
+                    .build();
+        } catch (Exception e) {
+            logger.error("Unexpected error for URL: {}", request.getUrl(), e);
+            return VideoFormatsResponse.builder()
+                    .error("Unexpected error: " + e.getMessage())
+                    .url(request.getUrl())
+                    .build();
+        }
+    }
+
+    private VideoFormatsResponse parseVideoFormats(String formatsOutput, String url) {
+        try {
+            List<VideoFormat> formats = new ArrayList<>();
+            String[] lines = formatsOutput.split("\n");
+            
+            for (String line : lines) {
+                line = line.trim();
+                if (line.isEmpty() || line.startsWith("ID") || line.startsWith("--")) {
+                    continue;
+                }
+                
+                VideoFormat format = parseFormatLine(line);
+                if (format != null) {
+                    formats.add(format);
+                }
+            }
+
+            return VideoFormatsResponse.builder()
+                    .formats(formats)
+                    .url(url)
+                    .build();
+
+        } catch (Exception e) {
+            logger.error("Error parsing video formats output", e);
+            return VideoFormatsResponse.builder()
+                    .error("Error parsing video formats: " + e.getMessage())
+                    .url(url)
+                    .build();
+        }
+    }
+
+    private VideoFormat parseFormatLine(String line) {
+        try {
+            // yt-dlp -F output format: ID EXT RESOLUTION │ FILESIZE TBR │ VCODEC VBR │ ACODEC ABR ASR │ MORE INFO
+            // Example: 22 mp4 1280x720 │ 50.12MiB 1.2MiB/s │ avc1.4d401f 1.2MiB/s │ mp4a.40.2 128k 44kHz │ 720p, mp4_dash
+            String[] parts = line.split("\\│");
+            if (parts.length < 3) {
+                return null;
+            }
+
+            // Parse first part: ID EXT RESOLUTION
+            String[] firstPart = parts[0].trim().split("\\s+");
+            if (firstPart.length < 2) {
+                return null;
+            }
+
+            String formatId = firstPart[0];
+            String extension = firstPart[1];
+            String resolution = firstPart.length > 2 ? firstPart[2] : "";
+
+            // Parse second part: FILESIZE TBR
+            String[] secondPart = parts[1].trim().split("\\s+");
+            String filesize = secondPart.length > 0 ? secondPart[0] : "";
+            String tbr = secondPart.length > 1 ? secondPart[1] : "";
+
+            // Parse third part: VCODEC VBR
+            String[] thirdPart = parts[2].trim().split("\\s+");
+            String vcodec = thirdPart.length > 0 ? thirdPart[0] : "";
+            String vbr = thirdPart.length > 1 ? thirdPart[1] : "";
+
+            // Parse fourth part: ACODEC ABR ASR
+            String acodec = "";
+            String abr = "";
+            String asr = "";
+            if (parts.length > 3) {
+                String[] fourthPart = parts[3].trim().split("\\s+");
+                acodec = fourthPart.length > 0 ? fourthPart[0] : "";
+                abr = fourthPart.length > 1 ? fourthPart[1] : "";
+                asr = fourthPart.length > 2 ? fourthPart[2] : "";
+            }
+
+            // Parse more info (last part)
+            String moreInfo = "";
+            if (parts.length > 4) {
+                moreInfo = parts[4].trim();
+            }
+
+            // Extract fps from resolution if present (e.g., "1280x720@30fps")
+            String fps = "";
+            if (resolution.contains("@")) {
+                String[] resParts = resolution.split("@");
+                resolution = resParts[0];
+                fps = resParts[1].replace("fps", "");
+            }
+
+            return VideoFormat.builder()
+                    .formatId(formatId)
+                    .extension(extension)
+                    .resolution(resolution)
+                    .filesize(filesize)
+                    .tbr(tbr)
+                    .vcodec(vcodec)
+                    .vbr(vbr)
+                    .acodec(acodec)
+                    .abr(abr)
+                    .asr(asr)
+                    .fps(fps)
+                    .moreInfo(moreInfo)
+                    .build();
+
+        } catch (Exception e) {
+            logger.warn("Error parsing format line: {}", line, e);
+            return null;
         }
     }
 

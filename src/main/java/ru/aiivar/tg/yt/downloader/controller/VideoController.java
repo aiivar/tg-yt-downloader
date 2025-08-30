@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.aiivar.tg.yt.downloader.model.VideoMetadataRequest;
 import ru.aiivar.tg.yt.downloader.model.VideoMetadataResponse;
+import ru.aiivar.tg.yt.downloader.model.VideoFormatsResponse;
 import ru.aiivar.tg.yt.downloader.service.VideoMetadataService;
 
 @RestController
@@ -23,6 +24,12 @@ public class VideoController {
     @PostMapping("/metadata")
     public ResponseEntity<VideoMetadataResponse> getMetadata(@RequestBody VideoMetadataRequest request) {
         VideoMetadataResponse response = videoMetadataService.getMetadata(request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/formats")
+    public ResponseEntity<VideoFormatsResponse> getFormats(@RequestBody VideoMetadataRequest request) {
+        VideoFormatsResponse response = videoMetadataService.getFormats(request);
         return ResponseEntity.ok(response);
     }
 }
