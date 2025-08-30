@@ -26,10 +26,4 @@ public class VideoController {
         VideoMetadataResponse response = videoMetadataService.getMetadata(request);
         return ResponseEntity.ok(response);
     }
-
-    @PostMapping("/formats")
-    public ResponseEntity<VideoFormatsResponse> getFormats(@RequestBody VideoMetadataRequest request) {
-        VideoFormatsResponse response = videoMetadataService.getFormats(request);
-        return ResponseEntity.ok(response);
-    }
 }
