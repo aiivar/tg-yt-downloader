@@ -18,8 +18,13 @@ services:
       - SPRING_JPA_SHOW_SQL=false
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - TELEGRAM_API_USE_LOCAL=${TELEGRAM_API_USE_LOCAL:-true}
+      - TELEGRAM_API_LOCAL_URL=${TELEGRAM_API_LOCAL_URL:-http://telegram-bot-api:8081}
+      - TELEGRAM_API_LOCAL_CREDENTIALS_PATH=${TELEGRAM_API_LOCAL_CREDENTIALS_PATH:-/path/to/credentials.json}
     depends_on:
       db:
+        condition: service_healthy
+      telegram-bot-api:
         condition: service_healthy
     networks:
       - app-network
@@ -30,6 +35,27 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+  telegram-bot-api:
+    image: aiogram/telegram-bot-api:latest
+    container_name: telegram-bot-api-dev
+    ports:
+      - "8081:8081"
+    environment:
+      - TELEGRAM_API_ID=${TELEGRAM_API_ID}
+      - TELEGRAM_API_HASH=${TELEGRAM_API_HASH}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+    volumes:
+      - telegram_bot_api_data_dev:/var/lib/telegram-bot-api
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/bot${TELEGRAM_BOT_TOKEN}/getMe"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   db:
     image: postgres:15-alpine
@@ -53,6 +79,7 @@ services:
 
 volumes:
   postgres_data_dev:
+  telegram_bot_api_data_dev:
 
 networks:
   app-network:

@@ -7,6 +7,7 @@ A Spring Boot application that provides video metadata retrieval functionality u
 - Retrieve comprehensive video metadata from YouTube and other supported platforms
 - Download videos in MP4 format with 720p resolution
 - Real upload to Telegram file server with file ID retrieval
+- **Support for large files up to 2GB using local Bot API server**
 - Automatic temp directory management and cleanup
 - Database storage of video URLs and Telegram file IDs
 - RESTful API endpoints for metadata retrieval and video downloading
@@ -97,6 +98,13 @@ GET /api/video/telegram/file/{fileId}
 ```
 
 Returns information about a file stored in Telegram using its file ID.
+
+### Get Telegram Configuration
+```
+GET /api/video/telegram/config
+```
+
+Returns the current Telegram Bot API configuration including local server settings.
 
 ## Response Format
 
@@ -212,6 +220,8 @@ If an error occurs during metadata retrieval, the response will include an `erro
 # Option A: Export environment variables
 export TELEGRAM_BOT_TOKEN=1234567890:ABCdefGHIjklMNOpqrsTUVwxyz
 export TELEGRAM_CHAT_ID=123456789
+export TELEGRAM_API_ID=your_api_id_here
+export TELEGRAM_API_HASH=your_api_hash_here
 
 # Option B: Use .env file
 cp env.example .env
@@ -221,7 +231,17 @@ cp env.example .env
 3. Build and run using Docker Compose:
 
 ```bash
+# Development environment (includes Bot API server)
+docker-compose -f docker-compose.dev.yml up --build
+
+# Production environment (includes Bot API server)
+docker-compose -f docker-compose.prod.yml up --build
+
+# Standard environment (includes Bot API server)
 docker-compose up --build
+
+# Bot API server only (if you want to run it separately)
+docker-compose -f docker-compose.bot-api.yml up -d
 ```
 
 ### Using Maven
@@ -312,6 +332,18 @@ The application requires Telegram Bot configuration for file uploads:
    telegram.bot.token=1234567890:ABCdefGHIjklMNOpqrsTUVwxyz
    telegram.chat.id=123456789
    ```
+
+### Large File Support (Up to 2GB)
+
+For files larger than 50MB, the application can use a local Telegram Bot API server:
+
+1. **Set up Local Bot API Server** (see `LOCAL_BOT_API_SETUP.md`)
+2. **Configure Environment Variables**:
+   ```bash
+   export TELEGRAM_API_USE_LOCAL=true
+   export TELEGRAM_API_LOCAL_URL=http://localhost:8081
+   ```
+3. **Automatic Fallback**: Files > 50MB automatically use local API if configured
 
 ## Logging
 
