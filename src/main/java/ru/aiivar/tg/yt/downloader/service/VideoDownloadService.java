@@ -19,6 +19,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 public class VideoDownloadService {
@@ -143,8 +144,10 @@ public class VideoDownloadService {
 
         logger.info("Executing yt-dlp with format: {}", format);
 
+        var progressInt = new AtomicInteger(1);
         YtDlpResponse response = YtDlp.execute(ytRequest, (progress, etaInSeconds) -> {
-            if (progress == (int) progress) {
+            if (progress >= progressInt.get()) {
+                progressInt.addAndGet(1);
                 logger.info("ID:{}. Progress: {}%, time: left {} sec.", downloadId, progress, etaInSeconds);
             }
         });
