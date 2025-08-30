@@ -25,7 +25,7 @@ services:
       db:
         condition: service_healthy
       telegram-bot-api:
-        condition: service_healthy
+        condition: service_started
     networks:
       - app-network
     restart: unless-stopped
@@ -50,12 +50,6 @@ services:
     networks:
       - app-network
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/bot${TELEGRAM_BOT_TOKEN}/getMe"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
 
   db:
     image: postgres:15-alpine
