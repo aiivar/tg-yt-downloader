@@ -130,14 +130,14 @@ public class VideoMetadataService {
 
     private VideoFormat parseFormatLine(String line) {
         try {
-            // yt-dlp -F output format: ID EXT RESOLUTION │ FILESIZE TBR │ VCODEC VBR │ ACODEC ABR ASR │ MORE INFO
-            // Example: 22 mp4 1280x720 │ 50.12MiB 1.2MiB/s │ avc1.4d401f 1.2MiB/s │ mp4a.40.2 128k 44kHz │ 720p, mp4_dash
-            String[] parts = line.split("\\│");
-            if (parts.length < 3) {
+            // yt-dlp -F output format: ID EXT RESOLUTION FPS CH | FILESIZE TBR PROTO | VCODEC VBR ACODEC ABR ASR MORE INFO
+            // Example: 18 mp4 640x268 30 2 | 8.69MiB 718k https | avc1.42001E mp4a.40.2 44k 360p
+            String[] parts = line.split("\\|");
+            if (parts.length < 2) {
                 return null;
             }
 
-            // Parse first part: ID EXT RESOLUTION
+            // Parse first part: ID EXT RESOLUTION FPS CH
             String[] firstPart = parts[0].trim().split("\\s+");
             if (firstPart.length < 2) {
                 return null;
@@ -145,41 +145,79 @@ public class VideoMetadataService {
 
             String formatId = firstPart[0];
             String extension = firstPart[1];
-            String resolution = firstPart.length > 2 ? firstPart[2] : "";
+            String resolution = "";
+            String fps = "";
+            String channels = "";
 
-            // Parse second part: FILESIZE TBR
+            // Parse resolution, fps, and channels from first part
+            if (firstPart.length > 2) {
+                // Check if the third element is resolution (contains 'x')
+                if (firstPart[2].contains("x")) {
+                    resolution = firstPart[2];
+                    // Check if there's fps (numeric)
+                    if (firstPart.length > 3 && firstPart[3].matches("\\d+")) {
+                        fps = firstPart[3];
+                        // Check if there's channels (numeric)
+                        if (firstPart.length > 4 && firstPart[4].matches("\\d+")) {
+                            channels = firstPart[4];
+                        }
+                    }
+                } else if (firstPart[2].equals("audio") && firstPart.length > 3 && firstPart[3].equals("only")) {
+                    // Audio only format
+                    resolution = "audio only";
+                    if (firstPart.length > 4 && firstPart[4].matches("\\d+")) {
+                        channels = firstPart[4];
+                    }
+                }
+            }
+
+            // Parse second part: FILESIZE TBR PROTO
             String[] secondPart = parts[1].trim().split("\\s+");
             String filesize = secondPart.length > 0 ? secondPart[0] : "";
             String tbr = secondPart.length > 1 ? secondPart[1] : "";
+            String protocol = secondPart.length > 2 ? secondPart[2] : "";
 
-            // Parse third part: VCODEC VBR
-            String[] thirdPart = parts[2].trim().split("\\s+");
-            String vcodec = thirdPart.length > 0 ? thirdPart[0] : "";
-            String vbr = thirdPart.length > 1 ? thirdPart[1] : "";
-
-            // Parse fourth part: ACODEC ABR ASR
+            // Parse third part: VCODEC VBR ACODEC ABR ASR MORE INFO
+            String vcodec = "";
+            String vbr = "";
             String acodec = "";
             String abr = "";
             String asr = "";
-            if (parts.length > 3) {
-                String[] fourthPart = parts[3].trim().split("\\s+");
-                acodec = fourthPart.length > 0 ? fourthPart[0] : "";
-                abr = fourthPart.length > 1 ? fourthPart[1] : "";
-                asr = fourthPart.length > 2 ? fourthPart[2] : "";
-            }
-
-            // Parse more info (last part)
             String moreInfo = "";
-            if (parts.length > 4) {
-                moreInfo = parts[4].trim();
-            }
 
-            // Extract fps from resolution if present (e.g., "1280x720@30fps")
-            String fps = "";
-            if (resolution.contains("@")) {
-                String[] resParts = resolution.split("@");
-                resolution = resParts[0];
-                fps = resParts[1].replace("fps", "");
+            if (parts.length > 2) {
+                String[] thirdPart = parts[2].trim().split("\\s+");
+                int index = 0;
+                
+                // Parse VCODEC
+                if (index < thirdPart.length) {
+                    vcodec = thirdPart[index++];
+                }
+                
+                // Parse VBR (if not "audio only")
+                if (index < thirdPart.length && !vcodec.equals("audio") && !thirdPart[index].equals("only")) {
+                    vbr = thirdPart[index++];
+                }
+                
+                // Parse ACODEC
+                if (index < thirdPart.length) {
+                    acodec = thirdPart[index++];
+                }
+                
+                // Parse ABR
+                if (index < thirdPart.length) {
+                    abr = thirdPart[index++];
+                }
+                
+                // Parse ASR
+                if (index < thirdPart.length) {
+                    asr = thirdPart[index++];
+                }
+                
+                // Remaining parts are more info
+                if (index < thirdPart.length) {
+                    moreInfo = String.join(" ", java.util.Arrays.copyOfRange(thirdPart, index, thirdPart.length));
+                }
             }
 
             return VideoFormat.builder()
@@ -194,6 +232,7 @@ public class VideoMetadataService {
                     .abr(abr)
                     .asr(asr)
                     .fps(fps)
+                    .channels(channels)
                     .moreInfo(moreInfo)
                     .build();
 
