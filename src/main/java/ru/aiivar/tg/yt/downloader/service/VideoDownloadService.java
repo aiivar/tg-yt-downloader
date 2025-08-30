@@ -145,7 +145,7 @@ public class VideoDownloadService {
         
         logger.info("Executing yt-dlp with format: {}", format);
         
-        YtDlpResponse response = YtDlp.execute(ytRequest);
+        YtDlpResponse response = YtDlp.execute(ytRequest, (progress, etaInSeconds) -> logger.info("ID:{}. Progress: {}, time: {} sec.", downloadId, progress, etaInSeconds));
         
         if (response.getExitCode() != 0) {
             logger.error("yt-dlp failed with exit code: {} for download ID: {}", response.getExitCode(), downloadId);
