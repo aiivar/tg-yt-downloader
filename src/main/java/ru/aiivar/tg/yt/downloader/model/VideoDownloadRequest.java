@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 public class VideoDownloadRequest {
 
     private String url;
+    private String chatId;
     private String format = "mp4";
     private String resolution = "720p";
     private String quality = "best";

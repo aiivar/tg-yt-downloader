@@ -141,6 +141,66 @@ public class TelegramFileService {
         }
     }
 
+    public String sendVideoByFileIdToChat(String fileId, String chatId) throws IOException {
+        logger.info("Sending video {} to Telegram chat: {}", fileId, chatId);
+
+        try {
+            String url = buildApiUrl("sendVideo");
+
+            // Создаем заголовки для multipart запроса
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+            // Создаем multipart данные
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+
+            // Добавляем chat_id
+            body.add("chat_id", chatId);
+
+            // Добавляем видео файл
+            body.add("video", fileId);
+
+            body.add("supports_streaming", true);
+
+            // Создаем HTTP entity
+            HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+
+            logger.info("Sending video to Telegram API: {}", url);
+
+            // Отправляем запрос
+            ResponseEntity<Map> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.POST,
+                    requestEntity,
+                    Map.class
+            );
+
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                Map<String, Object> responseBody = response.getBody();
+
+                if (Boolean.TRUE.equals(responseBody.get("ok"))) {
+                    Map<String, Object> result = (Map<String, Object>) responseBody.get("result");
+                    Map<String, Object> video = (Map<String, Object>) result.get("video");
+                    String fileId = (String) video.get("file_id");
+
+                    logger.info("Video uploaded successfully to Telegram. File ID: {}", fileId);
+                    return fileId;
+                } else {
+                    String errorDescription = (String) responseBody.get("description");
+                    logger.error("Telegram API returned error: {}", errorDescription);
+                    throw new IOException("Telegram API error: " + errorDescription);
+                }
+            } else {
+                logger.error("Unexpected response from Telegram API: {}", response.getStatusCode());
+                throw new IOException("Unexpected response from Telegram API: " + response.getStatusCode());
+            }
+
+        } catch (Exception e) {
+            logger.error("Error uploading video to Telegram: {}", file.getName(), e);
+            throw new IOException("Failed to upload video to Telegram: " + e.getMessage(), e);
+        }
+    }
+
     /**
      * Получает информацию о файле по fileId
      * @param fileId ID файла в Telegram
