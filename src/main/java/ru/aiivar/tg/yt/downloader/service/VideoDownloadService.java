@@ -19,6 +19,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 public class VideoDownloadService {
@@ -132,8 +133,8 @@ public class VideoDownloadService {
         ytRequest.setOption("output", outputTemplate);
 
         // Set format for MP4 with 720p resolution
-        String format = String.format("best[height<=720][ext=%s]/best[height<=720]/best[ext=%s]/best",
-                MP4_FORMAT, MP4_FORMAT);
+        String format = String.format("best[height<=720][ext=%s]",
+                MP4_FORMAT);
         ytRequest.setOption("format", format);
 
         // Additional options for better quality
@@ -143,11 +144,17 @@ public class VideoDownloadService {
 
         logger.info("Executing yt-dlp with format: {}", format);
 
-        YtDlpResponse response = YtDlp.execute(ytRequest, (progress, etaInSeconds) -> {
-            if (progress == (int) progress) {
-                logger.info("ID:{}. Progress: {}%, time: left {} sec.", downloadId, progress, etaInSeconds);
-            }
-        });
+        var progressInt = new AtomicInteger(1);
+        YtDlpResponse response = YtDlp.execute(
+                ytRequest,
+                (progress, etaInSeconds) -> {
+                    if (progress >= progressInt.get()) {
+                        progressInt.addAndGet(1);
+                        logger.info("ID:{}. Progress: {}%, time: left {} sec.", downloadId, progress, etaInSeconds);
+                    }
+                },
+                logger::debug
+        );
 
         if (response.getExitCode() != 0) {
             logger.error("yt-dlp failed with exit code: {} for download ID: {}", response.getExitCode(), downloadId);
