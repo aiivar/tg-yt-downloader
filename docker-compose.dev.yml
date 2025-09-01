@@ -38,7 +38,7 @@ services:
 
   telegram-bot:
     build:
-      context: ./telegram-bot  # Directory containing bot Dockerfile and code
+      context: ./python-tg-yt-bot  # Directory containing bot Dockerfile and code
       dockerfile: Dockerfile.telegram-bot
     container_name: telegram-bot
     environment:
