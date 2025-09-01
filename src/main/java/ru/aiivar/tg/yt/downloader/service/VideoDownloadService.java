@@ -145,12 +145,16 @@ public class VideoDownloadService {
         logger.info("Executing yt-dlp with format: {}", format);
 
         var progressInt = new AtomicInteger(1);
-        YtDlpResponse response = YtDlp.execute(ytRequest, (progress, etaInSeconds) -> {
-            if (progress >= progressInt.get()) {
-                progressInt.addAndGet(1);
-                logger.info("ID:{}. Progress: {}%, time: left {} sec.", downloadId, progress, etaInSeconds);
-            }
-        });
+        YtDlpResponse response = YtDlp.execute(
+                ytRequest,
+                (progress, etaInSeconds) -> {
+                    if (progress >= progressInt.get()) {
+                        progressInt.addAndGet(1);
+                        logger.info("ID:{}. Progress: {}%, time: left {} sec.", downloadId, progress, etaInSeconds);
+                    }
+                },
+                logger::debug
+        );
 
         if (response.getExitCode() != 0) {
             logger.error("yt-dlp failed with exit code: {} for download ID: {}", response.getExitCode(), downloadId);
