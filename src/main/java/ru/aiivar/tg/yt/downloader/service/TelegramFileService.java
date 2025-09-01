@@ -9,12 +9,9 @@ import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -73,76 +70,6 @@ public class TelegramFileService {
     }
 
     /**
-     * Отправляет файл в Telegram и возвращает fileId
-     * @param file файл для отправки
-     * @param caption подпись к файлу (опционально)
-     * @return fileId полученный от Telegram
-     * @throws IOException если произошла ошибка при работе с файлом
-     */
-    public String uploadFileToTelegram(File file, String caption) throws IOException {
-        logger.info("Starting file upload to Telegram: {}", file.getName());
-        
-        try {
-            String url = buildApiUrl("sendDocument");
-            
-            // Создаем заголовки для multipart запроса
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-            
-            // Создаем multipart данные
-            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-            
-            // Добавляем chat_id
-            body.add("chat_id", chatId);
-            
-            // Добавляем файл
-            body.add("document", new org.springframework.core.io.FileSystemResource(file));
-            
-            // Добавляем подпись если она есть
-            if (caption != null && !caption.trim().isEmpty()) {
-                body.add("caption", caption);
-            }
-            
-            // Создаем HTTP entity
-            HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
-            
-            logger.info("Sending file to Telegram API: {}", url);
-            
-            // Отправляем запрос
-            ResponseEntity<Map> response = restTemplate.exchange(
-                url,
-                HttpMethod.POST,
-                requestEntity,
-                Map.class
-            );
-            
-            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                Map<String, Object> responseBody = response.getBody();
-                
-                if (Boolean.TRUE.equals(responseBody.get("ok"))) {
-                    Map<String, Object> result = (Map<String, Object>) responseBody.get("result");
-                    Map<String, Object> document = (Map<String, Object>) result.get("document");
-                    String fileId = (String) document.get("file_id");
-                    
-                    logger.info("File uploaded successfully to Telegram. File ID: {}", fileId);
-                    return fileId;
-                } else {
-                    String errorDescription = (String) responseBody.get("description");
-                    logger.error("Telegram API returned error: {}", errorDescription);
-                    throw new IOException("Telegram API error: " + errorDescription);
-                }
-            } else {
-                logger.error("Unexpected response from Telegram API: {}", response.getStatusCode());
-                throw new IOException("Unexpected response from Telegram API: " + response.getStatusCode());
-            }
-            
-        } catch (Exception e) {
-            logger.error("Error uploading file to Telegram: {}", file.getName(), e);
-            throw new IOException("Failed to upload file to Telegram: " + e.getMessage(), e);
-        }
-    }
-
-    /**
      * Отправляет видео файл в Telegram и возвращает fileId
      * @param file видео файл для отправки
      * @param caption подпись к видео (опционально)
@@ -167,7 +94,9 @@ public class TelegramFileService {
             
             // Добавляем видео файл
             body.add("video", new org.springframework.core.io.FileSystemResource(file));
-            
+
+            body.add("supports_streaming", true);
+
             // Добавляем подпись если она есть
             if (caption != null && !caption.trim().isEmpty()) {
                 body.add("caption", caption);
