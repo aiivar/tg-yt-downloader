@@ -182,10 +182,6 @@ public class TelegramFileService {
                 Map<String, Object> responseBody = response.getBody();
 
                 if (Boolean.TRUE.equals(responseBody.get("ok"))) {
-                    Map<String, Object> result = (Map<String, Object>) responseBody.get("result");
-                    Map<String, Object> video = (Map<String, Object>) result.get("video");
-                    String fileId = (String) video.get("file_id");
-
                     logger.info("Video uploaded successfully to Telegram. File ID: {}", fileId);
                     return fileId;
                 } else {
