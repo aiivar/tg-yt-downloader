@@ -230,6 +230,10 @@ public class TelegramFileService {
             // Добавляем chat_id
             body.add("chat_id", chatId);
 
+            if (isVideo) {
+                body.add("supports_streaming", true);
+            }
+
             // Добавляем файл
             String fileField = isVideo ? "video" : "document";
             body.add(fileField, new org.springframework.core.io.FileSystemResource(file));
