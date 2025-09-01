@@ -5,10 +5,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
-import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.File;
 import java.io.IOException;
@@ -43,6 +43,7 @@ public class TelegramFileService {
 
     /**
      * Получает базовый URL для API запросов
+     *
      * @return URL для API запросов
      */
     private String getApiBaseUrl() {
@@ -57,6 +58,7 @@ public class TelegramFileService {
 
     /**
      * Строит полный URL для API запроса
+     *
      * @param endpoint endpoint API (например, "sendVideo", "sendDocument")
      * @return полный URL для запроса
      */
@@ -71,27 +73,28 @@ public class TelegramFileService {
 
     /**
      * Отправляет видео файл в Telegram и возвращает fileId
-     * @param file видео файл для отправки
+     *
+     * @param file    видео файл для отправки
      * @param caption подпись к видео (опционально)
      * @return fileId полученный от Telegram
      * @throws IOException если произошла ошибка при работе с файлом
      */
     public String uploadVideoToTelegram(File file, String caption) throws IOException {
         logger.info("Starting video upload to Telegram: {}", file.getName());
-        
+
         try {
             String url = buildApiUrl("sendVideo");
-            
+
             // Создаем заголовки для multipart запроса
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-            
+
             // Создаем multipart данные
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-            
+
             // Добавляем chat_id
             body.add("chat_id", chatId);
-            
+
             // Добавляем видео файл
             body.add("video", new org.springframework.core.io.FileSystemResource(file));
 
@@ -101,28 +104,28 @@ public class TelegramFileService {
             if (caption != null && !caption.trim().isEmpty()) {
                 body.add("caption", caption);
             }
-            
+
             // Создаем HTTP entity
             HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
-            
+
             logger.info("Sending video to Telegram API: {}", url);
-            
+
             // Отправляем запрос
             ResponseEntity<Map> response = restTemplate.exchange(
-                url,
-                HttpMethod.POST,
-                requestEntity,
-                Map.class
+                    url,
+                    HttpMethod.POST,
+                    requestEntity,
+                    Map.class
             );
-            
+
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
                 Map<String, Object> responseBody = response.getBody();
-                
+
                 if (Boolean.TRUE.equals(responseBody.get("ok"))) {
                     Map<String, Object> result = (Map<String, Object>) responseBody.get("result");
                     Map<String, Object> video = (Map<String, Object>) result.get("video");
                     String fileId = (String) video.get("file_id");
-                    
+
                     logger.info("Video uploaded successfully to Telegram. File ID: {}", fileId);
                     return fileId;
                 } else {
@@ -134,7 +137,7 @@ public class TelegramFileService {
                 logger.error("Unexpected response from Telegram API: {}", response.getStatusCode());
                 throw new IOException("Unexpected response from Telegram API: " + response.getStatusCode());
             }
-            
+
         } catch (Exception e) {
             logger.error("Error uploading video to Telegram: {}", file.getName(), e);
             throw new IOException("Failed to upload video to Telegram: " + e.getMessage(), e);
@@ -179,10 +182,6 @@ public class TelegramFileService {
                 Map<String, Object> responseBody = response.getBody();
 
                 if (Boolean.TRUE.equals(responseBody.get("ok"))) {
-                    Map<String, Object> result = (Map<String, Object>) responseBody.get("result");
-                    Map<String, Object> video = (Map<String, Object>) result.get("video");
-                    String fileId = (String) video.get("file_id");
-
                     logger.info("Video uploaded successfully to Telegram. File ID: {}", fileId);
                     return fileId;
                 } else {
@@ -196,40 +195,41 @@ public class TelegramFileService {
             }
 
         } catch (Exception e) {
-            logger.error("Error uploading video to Telegram: {}", file.getName(), e);
+            logger.error("Error uploading video to Telegram: {}", fileId, e);
             throw new IOException("Failed to upload video to Telegram: " + e.getMessage(), e);
         }
     }
 
     /**
      * Получает информацию о файле по fileId
+     *
      * @param fileId ID файла в Telegram
      * @return информация о файле
      */
     public Map<String, Object> getFileInfo(String fileId) {
         logger.info("Getting file info for file ID: {}", fileId);
-        
+
         try {
             String url = buildApiUrl("getFile");
-            
+
             Map<String, String> requestBody = new HashMap<>();
             requestBody.put("file_id", fileId);
-            
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            
+
             HttpEntity<Map<String, String>> requestEntity = new HttpEntity<>(requestBody, headers);
-            
+
             ResponseEntity<Map> response = restTemplate.exchange(
-                url,
-                HttpMethod.POST,
-                requestEntity,
-                Map.class
+                    url,
+                    HttpMethod.POST,
+                    requestEntity,
+                    Map.class
             );
-            
+
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
                 Map<String, Object> responseBody = response.getBody();
-                
+
                 if (Boolean.TRUE.equals(responseBody.get("ok"))) {
                     Map<String, Object> fileInfo = (Map<String, Object>) responseBody.get("result");
                     logger.info("File info retrieved successfully for file ID: {}", fileId);
@@ -243,7 +243,7 @@ public class TelegramFileService {
                 logger.error("Unexpected response from Telegram API: {}", response.getStatusCode());
                 return null;
             }
-            
+
         } catch (Exception e) {
             logger.error("Error getting file info for file ID: {}", fileId, e);
             return null;
@@ -252,6 +252,7 @@ public class TelegramFileService {
 
     /**
      * Проверяет, нужно ли использовать локальный API для файла данного размера
+     *
      * @param fileSize размер файла в байтах
      * @return true если нужно использовать локальный API
      */
@@ -262,7 +263,8 @@ public class TelegramFileService {
 
     /**
      * Отправляет большой файл (до 2GB) через локальный Bot API сервер
-     * @param file файл для отправки
+     *
+     * @param file    файл для отправки
      * @param caption подпись к файлу
      * @param isVideo true если это видео файл
      * @return fileId полученный от Telegram
@@ -273,8 +275,8 @@ public class TelegramFileService {
             throw new IOException("Local Bot API server is not configured. Cannot upload large files.");
         }
 
-        logger.info("Uploading large file to local Telegram Bot API: {} ({} MB)", 
-                   file.getName(), file.length() / (1024 * 1024));
+        logger.info("Uploading large file to local Telegram Bot API: {} ({} MB)",
+                file.getName(), file.length() / (1024 * 1024));
 
         try {
             String endpoint = isVideo ? "sendVideo" : "sendDocument";
@@ -310,10 +312,10 @@ public class TelegramFileService {
 
             // Отправляем запрос
             ResponseEntity<Map> response = restTemplate.exchange(
-                url,
-                HttpMethod.POST,
-                requestEntity,
-                Map.class
+                    url,
+                    HttpMethod.POST,
+                    requestEntity,
+                    Map.class
             );
 
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
@@ -344,19 +346,20 @@ public class TelegramFileService {
 
     /**
      * Проверяет доступность Telegram Bot API
+     *
      * @return true если API доступен, false в противном случае
      */
     public boolean checkTelegramApiHealth() {
         logger.info("Checking Telegram Bot API health");
-        
+
         try {
             String url = buildApiUrl("getMe");
-            
+
             ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
-            
+
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
                 Map<String, Object> responseBody = response.getBody();
-                
+
                 if (Boolean.TRUE.equals(responseBody.get("ok"))) {
                     Map<String, Object> result = (Map<String, Object>) responseBody.get("result");
                     String botUsername = (String) result.get("username");
@@ -370,7 +373,7 @@ public class TelegramFileService {
                 logger.error("Telegram Bot API health check failed with status: {}", response.getStatusCode());
                 return false;
             }
-            
+
         } catch (Exception e) {
             logger.error("Error checking Telegram Bot API health", e);
             return false;
