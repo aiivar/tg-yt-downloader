@@ -133,8 +133,8 @@ public class VideoDownloadService {
         ytRequest.setOption("output", outputTemplate);
 
         // Set format for MP4 with 720p resolution
-        String format = String.format("best[height<=720][ext=%s]/best[height<=720]/best[ext=%s]/best",
-                MP4_FORMAT, MP4_FORMAT);
+        String format = String.format("best[height<=720][ext=%s]",
+                MP4_FORMAT);
         ytRequest.setOption("format", format);
 
         // Additional options for better quality
