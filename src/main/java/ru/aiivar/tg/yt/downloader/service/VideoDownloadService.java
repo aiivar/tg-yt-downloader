@@ -74,6 +74,8 @@ public class VideoDownloadService {
             // Save to database
             saveVideoToDatabase(request.getUrl(), telegramFileId, downloadedFile.getName(), fileSize);
 
+            telegramFileService.sendVideoByFileIdToChat(telegramFileId, request.getChatId());
+
             return VideoDownloadResponse.builder()
                     .success(true)
                     .message("Video downloaded and uploaded successfully")
@@ -149,7 +151,7 @@ public class VideoDownloadService {
                 ytRequest,
                 (progress, etaInSeconds) -> {
                     if (progress >= progressInt.get()) {
-                        progressInt.addAndGet(1);
+                        progressInt.addAndGet((int) progress - progressInt.get() + 1);
                         logger.debug("ID:{}. Progress: {}%, time: left {} sec.", downloadId, progress, etaInSeconds);
                     }
                 },
