@@ -150,7 +150,7 @@ public class VideoDownloadService {
                 (progress, etaInSeconds) -> {
                     if (progress >= progressInt.get()) {
                         progressInt.addAndGet(1);
-                        logger.info("ID:{}. Progress: {}%, time: left {} sec.", downloadId, progress, etaInSeconds);
+                        logger.debug("ID:{}. Progress: {}%, time: left {} sec.", downloadId, progress, etaInSeconds);
                     }
                 },
                 logger::debug
