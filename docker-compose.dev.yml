@@ -30,11 +30,25 @@ services:
       - app-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/api/video/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/api/video/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+
+  telegram-bot:
+    build:
+      context: ./telegram-bot  # Directory containing bot Dockerfile and code
+      dockerfile: Dockerfile.telegram-bot
+    container_name: telegram-bot
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - BACKEND_URL=http://app:8080/api/video/download  # Use internal Docker network
+    depends_on:
+      - app
+    networks:
+      - app-network
+    restart: unless-stopped
 
   telegram-bot-api:
     image: aiogram/telegram-bot-api:latest
@@ -66,7 +80,7 @@ services:
       - app-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d tg_yt_downloader"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d tg_yt_downloader" ]
       interval: 10s
       timeout: 5s
       retries: 5
