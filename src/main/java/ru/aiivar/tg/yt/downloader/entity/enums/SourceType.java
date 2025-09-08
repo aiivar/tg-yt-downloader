@@ -4,7 +4,7 @@ package ru.aiivar.tg.yt.downloader.entity.enums;
  * Enum representing different video source types
  */
 public enum SourceType {
-    YOUTUBE("YouTube", "youtube.com", "youtu.be")
+    YOUTUBE("YouTube", "youtube.com", "youtu.be");
 
     private final String displayName;
     private final String[] domains;
@@ -27,18 +27,17 @@ public enum SourceType {
      */
     public static SourceType fromUrl(String url) {
         if (url == null || url.trim().isEmpty()) {
-            return CUSTOM;
+            return null;
         }
 
         String lowerUrl = url.toLowerCase();
         for (SourceType type : values()) {
-            if (type == CUSTOM) continue;
             for (String domain : type.domains) {
                 if (lowerUrl.contains(domain.toLowerCase())) {
                     return type;
                 }
             }
         }
-        return CUSTOM;
+        return null;
     }
 }

@@ -221,6 +221,6 @@ public class VideoDownloadTask extends BaseTaskEntity {
     }
 
     public void incrementRetryCount() {
-        this.retryCount++;
+        this.setRetryCount(this.getRetryCount() + 1);
     }
 }

@@ -15,6 +15,7 @@ import ru.aiivar.tg.yt.downloader.entity.enums.SourceType;
 import ru.aiivar.tg.yt.downloader.entity.enums.TaskStatus;
 import ru.aiivar.tg.yt.downloader.model.VideoDownloadRequest;
 import ru.aiivar.tg.yt.downloader.model.VideoDownloadResponse;
+import ru.aiivar.tg.yt.downloader.service.VideoDownloadTaskExecutor;
 import ru.aiivar.tg.yt.downloader.service.VideoDownloadTaskResultService;
 import ru.aiivar.tg.yt.downloader.service.VideoDownloadTaskService;
 

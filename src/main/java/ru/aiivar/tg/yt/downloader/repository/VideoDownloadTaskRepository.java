@@ -70,7 +70,7 @@ public interface VideoDownloadTaskRepository extends JpaRepository<VideoDownload
     /**
      * Find pending tasks ordered by priority and creation time
      */
-    @Query("SELECT t FROM VideoDownloadTask t WHERE t.status = 'PENDING' ORDER BY t.priority DESC, t.createdAt ASC")
+    @Query("SELECT t FROM VideoDownloadTask t WHERE t.status = ru.aiivar.tg.yt.downloader.entity.enums.TaskStatus.PENDING ORDER BY t.priority DESC, t.createdAt ASC")
     List<VideoDownloadTask> findPendingTasksOrderedByPriority();
 
     /**
@@ -116,7 +116,7 @@ public interface VideoDownloadTaskRepository extends JpaRepository<VideoDownload
     /**
      * Find tasks that are stuck in processing state for too long
      */
-    @Query("SELECT t FROM VideoDownloadTask t WHERE t.status = 'PROCESSING' AND t.updatedAt < :cutoffTime")
+    @Query("SELECT t FROM VideoDownloadTask t WHERE t.status = ru.aiivar.tg.yt.downloader.entity.enums.TaskStatus.PROCESSING AND t.updatedAt < :cutoffTime")
     List<VideoDownloadTask> findStuckProcessingTasks(@Param("cutoffTime") LocalDateTime cutoffTime);
 
     /**
@@ -139,12 +139,12 @@ public interface VideoDownloadTaskRepository extends JpaRepository<VideoDownload
     /**
      * Delete old completed tasks
      */
-    @Query("DELETE FROM VideoDownloadTask t WHERE t.status = 'COMPLETED' AND t.createdAt < :cutoffDate")
+    @Query("DELETE FROM VideoDownloadTask t WHERE t.status = ru.aiivar.tg.yt.downloader.entity.enums.TaskStatus.COMPLETED AND t.createdAt < :cutoffDate")
     int deleteOldCompletedTasks(@Param("cutoffDate") LocalDateTime cutoffDate);
 
     /**
      * Delete old failed tasks
      */
-    @Query("DELETE FROM VideoDownloadTask t WHERE t.status = 'FAILED' AND t.retryCount >= t.maxRetries AND t.createdAt < :cutoffDate")
+    @Query("DELETE FROM VideoDownloadTask t WHERE t.status = ru.aiivar.tg.yt.downloader.entity.enums.TaskStatus.FAILED AND t.retryCount >= t.maxRetries AND t.createdAt < :cutoffDate")
     int deleteOldFailedTasks(@Param("cutoffDate") LocalDateTime cutoffDate);
 }

@@ -4,7 +4,7 @@ package ru.aiivar.tg.yt.downloader.entity.enums;
  * Enum representing different destination types for downloaded videos
  */
 public enum DestinationType {
-    TELEGRAM("Telegram", "tg")
+    TELEGRAM("Telegram", "tg");
 
     private final String displayName;
     private final String code;

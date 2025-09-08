@@ -43,6 +43,11 @@ public interface VideoDownloadTaskResultRepository extends JpaRepository<VideoDo
     List<VideoDownloadTaskResult> findByDestinationType(DestinationType destinationType);
 
     /**
+     * Find results by destination type with pagination
+     */
+    Page<VideoDownloadTaskResult> findByDestinationType(DestinationType destinationType, Pageable pageable);
+
+    /**
      * Find results by destination ID
      */
     Optional<VideoDownloadTaskResult> findByDestinationId(String destinationId);
@@ -127,7 +132,7 @@ public interface VideoDownloadTaskResultRepository extends JpaRepository<VideoDo
     /**
      * Get total file size of all completed results
      */
-    @Query("SELECT COALESCE(SUM(r.fileSizeBytes), 0) FROM VideoDownloadTaskResult r WHERE r.status = 'COMPLETED'")
+    @Query("SELECT COALESCE(SUM(r.fileSizeBytes), 0) FROM VideoDownloadTaskResult r WHERE r.status = ru.aiivar.tg.yt.downloader.entity.enums.TaskStatus.COMPLETED")
     Long getTotalFileSizeOfCompletedResults();
 
     /**
@@ -145,13 +150,13 @@ public interface VideoDownloadTaskResultRepository extends JpaRepository<VideoDo
     /**
      * Find results that need cleanup (old completed results)
      */
-    @Query("SELECT r FROM VideoDownloadTaskResult r WHERE r.status = 'COMPLETED' AND r.createdAt < :cutoffDate")
+    @Query("SELECT r FROM VideoDownloadTaskResult r WHERE r.status = ru.aiivar.tg.yt.downloader.entity.enums.TaskStatus.COMPLETED AND r.createdAt < :cutoffDate")
     List<VideoDownloadTaskResult> findResultsForCleanup(@Param("cutoffDate") LocalDateTime cutoffDate);
 
     /**
      * Delete old completed results
      */
-    @Query("DELETE FROM VideoDownloadTaskResult r WHERE r.status = 'COMPLETED' AND r.createdAt < :cutoffDate")
+    @Query("DELETE FROM VideoDownloadTaskResult r WHERE r.status = ru.aiivar.tg.yt.downloader.entity.enums.TaskStatus.COMPLETED AND r.createdAt < :cutoffDate")
     int deleteOldCompletedResults(@Param("cutoffDate") LocalDateTime cutoffDate);
 
     /**
@@ -172,7 +177,7 @@ public interface VideoDownloadTaskResultRepository extends JpaRepository<VideoDo
            "JOIN r.task t " +
            "WHERE t.sourceUrl = :sourceUrl " +
            "AND r.destinationType = :destinationType " +
-           "AND r.status = 'COMPLETED' " +
+           "AND r.status = ru.aiivar.tg.yt.downloader.entity.enums.TaskStatus.COMPLETED " +
            "AND r.destinationId IS NOT NULL " +
            "ORDER BY r.createdAt DESC")
     List<VideoDownloadTaskResult> findExistingResultsBySourceUrlAndDestination(
@@ -186,7 +191,7 @@ public interface VideoDownloadTaskResultRepository extends JpaRepository<VideoDo
            "JOIN r.task t " +
            "WHERE t.sourceUrl = :sourceUrl " +
            "AND r.destinationType = :destinationType " +
-           "AND r.status = 'COMPLETED' " +
+           "AND r.status = ru.aiivar.tg.yt.downloader.entity.enums.TaskStatus.COMPLETED " +
            "AND r.destinationId IS NOT NULL " +
            "ORDER BY r.createdAt DESC")
     Optional<VideoDownloadTaskResult> findMostRecentResultBySourceUrlAndDestination(
@@ -200,7 +205,7 @@ public interface VideoDownloadTaskResultRepository extends JpaRepository<VideoDo
            "JOIN r.task t " +
            "WHERE t.sourceUrl = :sourceUrl " +
            "AND r.destinationType = :destinationType " +
-           "AND r.status = 'COMPLETED'")
+           "AND r.status = ru.aiivar.tg.yt.downloader.entity.enums.TaskStatus.COMPLETED")
     long countExistingResultsBySourceUrlAndDestination(
             @Param("sourceUrl") String sourceUrl, 
             @Param("destinationType") DestinationType destinationType);
