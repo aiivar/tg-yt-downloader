@@ -198,7 +198,7 @@ public class VideoDownloadTaskExecutor {
         // Acquire semaphore permit
         try {
             processingSemaphore.acquire();
-            processingTasks.put(taskId, null); // Placeholder to track processing
+            processingTasks.put(taskId, CompletableFuture.completedFuture(null)); // Placeholder to track processing
             
             logger.debug("Acquired processing slot for task: {} (available slots: {})", 
                     taskId, processingSemaphore.availablePermits());
@@ -211,15 +211,21 @@ public class VideoDownloadTaskExecutor {
 
             VideoDownloadTaskResult result = taskService.processTask(taskId);
             logger.info("Successfully processed task: {}", taskId);
-            return CompletableFuture.completedFuture(result);
+            CompletableFuture<VideoDownloadTaskResult> future = CompletableFuture.completedFuture(result);
+            processingTasks.put(taskId, future); // Update with actual result
+            return future;
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             logger.error("Task processing interrupted: {}", taskId, e);
-            return CompletableFuture.failedFuture(e);
+            CompletableFuture<VideoDownloadTaskResult> failedFuture = CompletableFuture.failedFuture(e);
+            processingTasks.put(taskId, failedFuture);
+            return failedFuture;
         } catch (Exception e) {
             logger.error("Error processing task asynchronously: {}", taskId, e);
-            return CompletableFuture.failedFuture(e);
+            CompletableFuture<VideoDownloadTaskResult> failedFuture = CompletableFuture.failedFuture(e);
+            processingTasks.put(taskId, failedFuture);
+            return failedFuture;
         } finally {
             // Always release semaphore and remove from tracking
             processingSemaphore.release();

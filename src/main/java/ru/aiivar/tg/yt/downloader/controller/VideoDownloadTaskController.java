@@ -15,6 +15,7 @@ import ru.aiivar.tg.yt.downloader.entity.enums.SourceType;
 import ru.aiivar.tg.yt.downloader.entity.enums.TaskStatus;
 import ru.aiivar.tg.yt.downloader.model.VideoDownloadRequest;
 import ru.aiivar.tg.yt.downloader.model.VideoDownloadResponse;
+import ru.aiivar.tg.yt.downloader.service.MemoryMonitoringService;
 import ru.aiivar.tg.yt.downloader.service.VideoDownloadTaskExecutor;
 import ru.aiivar.tg.yt.downloader.service.VideoDownloadTaskResultService;
 import ru.aiivar.tg.yt.downloader.service.VideoDownloadTaskService;
@@ -43,6 +44,9 @@ public class VideoDownloadTaskController {
 
     @Autowired
     private VideoDownloadTaskExecutor taskExecutor;
+
+    @Autowired
+    private MemoryMonitoringService memoryMonitoringService;
 
     /**
      * Create a new video download task
@@ -489,6 +493,113 @@ public class VideoDownloadTaskController {
                     .build();
 
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    /**
+     * Get system status including memory information
+     */
+    @GetMapping("/status")
+    public ResponseEntity<Map<String, Object>> getSystemStatus() {
+        try {
+            logger.info("Getting system status");
+            
+            Map<String, Object> status = new HashMap<>();
+            
+            // Get task statistics
+            VideoDownloadTaskService.TaskStatistics taskStats = taskService.getTaskStatistics();
+            status.put("taskStatistics", taskStats);
+            
+            // Get execution statistics
+            VideoDownloadTaskExecutor.TaskExecutionStatistics execStats = taskExecutor.getExecutionStatistics();
+            status.put("executionStatistics", execStats);
+            
+            // Get memory statistics
+            MemoryMonitoringService.MemoryStats memoryStats = memoryMonitoringService.getMemoryStats();
+            status.put("memoryStatistics", memoryStats);
+            
+            // Get processing status
+            VideoDownloadTaskExecutor.ProcessingStatus processingStatus = taskExecutor.getProcessingStatus();
+            status.put("processingStatus", processingStatus);
+            
+            return ResponseEntity.ok(status);
+            
+        } catch (Exception e) {
+            logger.error("Error getting system status", e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Failed to get system status: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+    /**
+     * Force garbage collection and memory cleanup
+     */
+    @PostMapping("/cleanup/memory")
+    public ResponseEntity<Map<String, Object>> forceMemoryCleanup() {
+        try {
+            logger.info("Forcing memory cleanup");
+            
+            Map<String, Object> result = new HashMap<>();
+            
+            // Get memory stats before cleanup
+            MemoryMonitoringService.MemoryStats beforeStats = memoryMonitoringService.getMemoryStats();
+            result.put("memoryBefore", beforeStats);
+            
+            // Force garbage collection
+            memoryMonitoringService.performGarbageCollectionIfNeeded();
+            
+            // Clean up old tasks
+            int deletedCompleted = taskService.cleanupOldCompletedTasks(
+                    java.time.LocalDateTime.now().minusDays(1));
+            int deletedFailed = taskService.cleanupOldFailedTasks(
+                    java.time.LocalDateTime.now().minusDays(1));
+            
+            result.put("deletedCompletedTasks", deletedCompleted);
+            result.put("deletedFailedTasks", deletedFailed);
+            
+            // Get memory stats after cleanup
+            MemoryMonitoringService.MemoryStats afterStats = memoryMonitoringService.getMemoryStats();
+            result.put("memoryAfter", afterStats);
+            
+            result.put("success", true);
+            result.put("message", "Memory cleanup completed successfully");
+            
+            return ResponseEntity.ok(result);
+            
+        } catch (Exception e) {
+            logger.error("Error during memory cleanup", e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("error", "Failed to perform memory cleanup: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+    /**
+     * Temporarily disable memory monitoring (emergency use only)
+     */
+    @PostMapping("/emergency/disable-memory-monitoring")
+    public ResponseEntity<Map<String, Object>> disableMemoryMonitoring(
+            @RequestParam(defaultValue = "10") int durationMinutes) {
+        try {
+            logger.warn("Emergency: Disabling memory monitoring for {} minutes", durationMinutes);
+            
+            memoryMonitoringService.temporarilyDisableMemoryMonitoring(durationMinutes);
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
+            result.put("message", "Memory monitoring disabled for " + durationMinutes + " minutes");
+            result.put("durationMinutes", durationMinutes);
+            
+            return ResponseEntity.ok(result);
+            
+        } catch (Exception e) {
+            logger.error("Error disabling memory monitoring", e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("error", "Failed to disable memory monitoring: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }
 }

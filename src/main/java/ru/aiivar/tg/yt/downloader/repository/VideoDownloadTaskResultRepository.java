@@ -3,6 +3,7 @@ package ru.aiivar.tg.yt.downloader.repository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -156,6 +157,7 @@ public interface VideoDownloadTaskResultRepository extends JpaRepository<VideoDo
     /**
      * Delete old completed results
      */
+    @Modifying
     @Query("DELETE FROM VideoDownloadTaskResult r WHERE r.status = ru.aiivar.tg.yt.downloader.entity.enums.TaskStatus.COMPLETED AND r.createdAt < :cutoffDate")
     int deleteOldCompletedResults(@Param("cutoffDate") LocalDateTime cutoffDate);
 
@@ -193,8 +195,8 @@ public interface VideoDownloadTaskResultRepository extends JpaRepository<VideoDo
            "AND r.destinationType = :destinationType " +
            "AND r.status = ru.aiivar.tg.yt.downloader.entity.enums.TaskStatus.COMPLETED " +
            "AND r.destinationId IS NOT NULL " +
-           "ORDER BY r.createdAt DESC")
-    Optional<VideoDownloadTaskResult> findMostRecentResultBySourceUrlAndDestination(
+           "ORDER BY r.createdAt DESC, r.id DESC")
+    List<VideoDownloadTaskResult> findMostRecentResultsBySourceUrlAndDestination(
             @Param("sourceUrl") String sourceUrl, 
             @Param("destinationType") DestinationType destinationType);
 

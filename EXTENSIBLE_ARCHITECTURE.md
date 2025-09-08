@@ -37,25 +37,9 @@ The new architecture is designed to be highly extensible, allowing you to easily
 
 #### SourceType
 - `YOUTUBE`: YouTube videos
-- `VIMEO`: Vimeo videos
-- `TWITCH`: Twitch streams
-- `TIKTOK`: TikTok videos
-- `INSTAGRAM`: Instagram videos
-- `TWITTER`: Twitter/X videos
-- `FACEBOOK`: Facebook videos
-- `DAILYMOTION`: Dailymotion videos
-- `RUMBLE`: Rumble videos
-- `CUSTOM`: Custom sources
 
 #### DestinationType
 - `TELEGRAM`: Telegram Bot API
-- `DISCORD`: Discord webhooks
-- `SLACK`: Slack webhooks
-- `EMAIL`: Email attachments
-- `CLOUD_STORAGE`: Cloud storage services
-- `LOCAL_STORAGE`: Local file system
-- `WEBHOOK`: Generic webhook
-- `CUSTOM`: Custom destinations
 
 ### 3. Processors
 

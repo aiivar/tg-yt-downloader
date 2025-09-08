@@ -62,11 +62,15 @@ public class MemoryMonitoringService {
 
         MemoryStats stats = getMemoryStats();
         
+        // In containerized environments, use max memory instead of free memory for better accuracy
+        long availableMemoryMB = stats.getMaxMemory() / (1024 * 1024);
+        long usedMemoryMB = stats.getUsedMemory() / (1024 * 1024);
+        long freeMemoryMB = availableMemoryMB - usedMemoryMB;
+        
         // Check if free memory is above minimum threshold
-        long freeMemoryMB = stats.getFreeMemory() / (1024 * 1024);
         if (freeMemoryMB < processingConfig.getMinFreeMemoryMB()) {
-            logger.warn("Insufficient free memory: {} MB (minimum required: {} MB)", 
-                    freeMemoryMB, processingConfig.getMinFreeMemoryMB());
+            logger.warn("Insufficient free memory: {} MB (minimum required: {} MB, max: {} MB, used: {} MB)", 
+                    freeMemoryMB, processingConfig.getMinFreeMemoryMB(), availableMemoryMB, usedMemoryMB);
             return false;
         }
 
@@ -77,6 +81,7 @@ public class MemoryMonitoringService {
             return false;
         }
 
+        logger.debug("Memory check passed: {} MB free, {}% used", freeMemoryMB, stats.getUsedPercentage());
         return true;
     }
 
@@ -91,9 +96,11 @@ public class MemoryMonitoringService {
         MemoryStats stats = getMemoryStats();
         int maxTasks = processingConfig.getMaxConcurrentTasks();
         
-        // Calculate based on available memory
-        long freeMemoryMB = stats.getFreeMemory() / (1024 * 1024);
-        long estimatedMemoryPerTaskMB = 200; // Rough estimate for video processing
+        // Calculate based on available memory (use max memory for containerized environments)
+        long availableMemoryMB = stats.getMaxMemory() / (1024 * 1024);
+        long usedMemoryMB = stats.getUsedMemory() / (1024 * 1024);
+        long freeMemoryMB = availableMemoryMB - usedMemoryMB;
+        long estimatedMemoryPerTaskMB = 300; // Conservative estimate for video processing
         
         int memoryBasedTasks = (int) (freeMemoryMB / estimatedMemoryPerTaskMB);
         
@@ -105,8 +112,8 @@ public class MemoryMonitoringService {
             recommendedTasks = 1;
         }
         
-        logger.debug("Memory-based task recommendation: {} (max: {}, memory-based: {})", 
-                recommendedTasks, maxTasks, memoryBasedTasks);
+        logger.debug("Memory-based task recommendation: {} (max: {}, memory-based: {}, free: {} MB)", 
+                recommendedTasks, maxTasks, memoryBasedTasks, freeMemoryMB);
         
         return recommendedTasks;
     }
@@ -152,7 +159,35 @@ public class MemoryMonitoringService {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
+            
+            // Log memory stats after GC
+            MemoryStats statsAfterGC = getMemoryStats();
+            logger.info("Memory after GC: {} MB free, {}% used", 
+                    (statsAfterGC.getMaxMemory() - statsAfterGC.getUsedMemory()) / (1024 * 1024),
+                    statsAfterGC.getUsedPercentage());
         }
+    }
+
+    /**
+     * Temporarily disable memory monitoring for emergency processing
+     * This should only be used in extreme cases where tasks are stuck
+     */
+    public void temporarilyDisableMemoryMonitoring(int durationMinutes) {
+        logger.warn("Temporarily disabling memory monitoring for {} minutes", durationMinutes);
+        processingConfig.setEnableMemoryMonitoring(false);
+        
+        // Schedule re-enabling of memory monitoring
+        new Thread(() -> {
+            try {
+                Thread.sleep(durationMinutes * 60 * 1000);
+                processingConfig.setEnableMemoryMonitoring(true);
+                logger.info("Re-enabled memory monitoring after {} minutes", durationMinutes);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                processingConfig.setEnableMemoryMonitoring(true);
+                logger.info("Re-enabled memory monitoring due to interruption");
+            }
+        }).start();
     }
 
     /**

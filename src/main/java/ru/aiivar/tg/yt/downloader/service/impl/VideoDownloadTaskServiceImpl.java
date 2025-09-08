@@ -108,6 +108,16 @@ public class VideoDownloadTaskServiceImpl implements VideoDownloadTaskService {
                 VideoDownloadTaskResult reusedResult = resultService.reuseExistingResult(request.getUrl(), destinationType, savedTask);
                 logger.info("Created reused result with ID: {} for task: {}", reusedResult.getId(), savedTask.getId());
                 
+                // Send the video to the user since we're reusing an existing result
+                try {
+                    VideoDestinationProcessor destinationProcessor = getDestinationProcessor(destinationType);
+                    destinationProcessor.sendVideoById(reusedResult.getDestinationId(), savedTask);
+                    logger.info("Successfully sent reused video to user for task: {}", savedTask.getId());
+                } catch (Exception sendError) {
+                    logger.error("Error sending reused video to user for task: {}", savedTask.getId(), sendError);
+                    // Don't fail the task, just log the error
+                }
+                
                 // Mark task as completed since we're reusing an existing result
                 savedTask.setStatus(TaskStatus.COMPLETED);
                 savedTask.setDownloadCompletedAt(LocalDateTime.now());

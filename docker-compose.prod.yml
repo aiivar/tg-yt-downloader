@@ -28,8 +28,15 @@ services:
     networks:
       - app-network
     restart: unless-stopped
+    # Set memory limits to prevent memory issues
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/api/video/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 3

@@ -408,7 +408,14 @@ public class VideoDownloadTaskResultServiceImpl implements VideoDownloadTaskResu
     @Transactional(readOnly = true)
     public Optional<VideoDownloadTaskResult> findMostRecentResultBySourceUrlAndDestination(String sourceUrl, DestinationType destinationType) {
         logger.debug("Finding most recent result for source URL: {} and destination: {}", sourceUrl, destinationType);
-        return resultRepository.findMostRecentResultBySourceUrlAndDestination(sourceUrl, destinationType);
+        List<VideoDownloadTaskResult> results = resultRepository.findMostRecentResultsBySourceUrlAndDestination(sourceUrl, destinationType);
+        
+        if (results.size() > 1) {
+            logger.warn("Found {} results for source URL: {} and destination: {}, using the most recent one", 
+                    results.size(), sourceUrl, destinationType);
+        }
+        
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
 
     @Override
