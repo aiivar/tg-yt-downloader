@@ -1,211 +1,211 @@
 # TG YouTube Downloader
 
-A Spring Boot application that provides video metadata retrieval functionality using yt-dlp-java library.
+A Spring Boot application that provides extensible video download functionality using yt-dlp-java library with task-based processing and result reuse.
 
 ## Features
 
-- Retrieve comprehensive video metadata from YouTube and other supported platforms
-- Download videos in MP4 format with 720p resolution
-- Real upload to Telegram file server with file ID retrieval
-- **Support for large files up to 2GB using local Bot API server**
-- Automatic temp directory management and cleanup
-- Database storage of video URLs and Telegram file IDs
-- RESTful API endpoints for metadata retrieval and video downloading
-- Telegram Bot API integration with health checks
-- Docker support for easy deployment
-- Comprehensive error handling and logging
+- **Extensible Architecture**: Support for multiple video sources (YouTube, Vimeo, TikTok, etc.) and destinations (Telegram, Discord, etc.)
+- **Task-based Processing**: Asynchronous video download and upload with real-time status tracking
+- **Result Reuse**: Intelligent caching to avoid re-downloading previously processed videos
+- **Memory-aware Processing**: Configurable concurrency limits with adaptive processing based on available memory
+- **Real-time Status Updates**: Live progress tracking and status monitoring
+- **Telegram Bot Integration**: Complete bot with real-time status updates and progress indicators
+- **Database Persistence**: Comprehensive task and result storage with cleanup management
+- **Docker Support**: Easy deployment with multiple environment configurations
+- **Comprehensive Monitoring**: Processing statistics, memory monitoring, and health checks
 
 ## API Endpoints
 
-### Health Check
-```
-GET /api/video/health
-```
-Returns the health status of the application.
+### Task Management
 
-### Get Video Metadata
+#### Create Video Download Task
 ```
-POST /api/video/metadata
-Content-Type: application/json
-
-{
-  "url": "https://www.youtube.com/watch?v=VIDEO_ID"
-}
-```
-
-Returns comprehensive video metadata including:
-- Title, description, uploader information
-- Duration, view count, like count
-- Upload date, availability, license
-- Tags, category, language
-- Format information (resolution, fps, codecs)
-- File size and other technical details
-
-### Get Video Formats
-```
-POST /api/video/formats
-Content-Type: application/json
-
-{
-  "url": "https://www.youtube.com/watch?v=VIDEO_ID"
-}
-```
-
-Returns a list of available video formats for the given URL, including:
-- Format ID, extension, resolution
-- File size, total bitrate
-- Video codec, video bitrate
-- Audio codec, audio bitrate, audio sample rate
-- FPS (frames per second)
-- Additional format information
-
-### Download Video
-```
-POST /api/video/download
+POST /api/v1/tasks
 Content-Type: application/json
 
 {
   "url": "https://www.youtube.com/watch?v=VIDEO_ID",
+  "chatId": "123456789",
   "format": "mp4",
   "resolution": "720p",
   "quality": "best"
 }
 ```
 
-Downloads a video in MP4 format with 720p resolution and uploads it to Telegram file server. Returns:
-- Download ID for tracking
-- File name and size
-- Telegram file ID
-- Success/error status
+Creates a new video download task. Returns task ID for tracking and status monitoring.
 
-### Get Download Status
+#### Get Task Status
 ```
-GET /api/video/download/{downloadId}/status
+GET /api/v1/tasks/{taskId}
 ```
 
-Returns the current status of a download operation using the download ID.
+Returns the current status of a task including progress information.
 
-### Check Telegram API Health
+#### Get Task Results
 ```
-GET /api/video/telegram/health
-```
-
-Returns the health status of the Telegram Bot API connection.
-
-### Get Telegram File Info
-```
-GET /api/video/telegram/file/{fileId}
+GET /api/v1/tasks/{taskId}/results
 ```
 
-Returns information about a file stored in Telegram using its file ID.
+Returns the results of a completed task including file information and destination IDs.
 
-### Get Telegram Configuration
+#### Get All Tasks
 ```
-GET /api/video/telegram/config
+GET /api/v1/tasks?page=0&size=20&status=PENDING
 ```
 
-Returns the current Telegram Bot API configuration including local server settings.
+Returns paginated list of tasks with optional filtering by status.
+
+### Processing Management
+
+#### Get Processing Status
+```
+GET /api/v1/tasks/processing/status
+```
+
+Returns current processing status including available slots and memory pressure.
+
+#### Get Processing Statistics
+```
+GET /api/v1/tasks/processing/statistics
+```
+
+Returns processing statistics including success rates and performance metrics.
+
+#### Update Processing Configuration
+```
+PUT /api/v1/tasks/processing/config
+Content-Type: application/json
+
+{
+  "maxConcurrentTasks": 2,
+  "memoryThresholdPercentage": 80
+}
+```
+
+Updates processing configuration parameters.
+
+### Result Reuse
+
+#### Check Existing Results
+```
+GET /api/v1/tasks/results/exists?url={url}&destinationType=TELEGRAM
+```
+
+Checks if a result already exists for the given URL and destination type.
+
+#### Send Existing Result
+```
+POST /api/v1/tasks/results/send-existing
+Content-Type: application/json
+
+{
+  "url": "https://www.youtube.com/watch?v=VIDEO_ID",
+  "destinationType": "TELEGRAM",
+  "chatId": "123456789"
+}
+```
+
+Sends an existing result to the specified destination without re-processing.
 
 ## Response Format
 
-### Video Download Response
+### Task Creation Response
 ```json
 {
   "success": true,
-  "message": "Video downloaded and uploaded successfully",
+  "message": "Task created successfully",
   "downloadId": "550e8400-e29b-41d4-a716-446655440000",
-  "fileName": "video_title.mp4",
-  "fileSize": 12345678,
-  "telegramFileId": "mock_tg_550e8400-e29b-41d4-a716-446655440000_1234567890",
+  "fileName": null,
+  "fileSize": null,
+  "telegramFileId": null,
   "error": null
 }
 ```
 
-### Video Metadata Response
+### Task Status Response
 ```json
 {
-  "title": "Video Title",
-  "description": "Video description...",
-  "uploader": "Channel Name",
-  "uploaderId": "channel_id",
-  "channelUrl": "https://www.youtube.com/channel/...",
-  "webpageUrl": "https://www.youtube.com/watch?v=...",
-  "thumbnail": "https://i.ytimg.com/vi/.../default.jpg",
-  "duration": "PT3M45S",
-  "viewCount": 1234567,
-  "likeCount": 12345,
-  "uploadDate": "20231201",
-  "availability": "public",
-  "license": "Standard YouTube License",
-  "tags": ["tag1", "tag2", "tag3"],
-  "category": "Entertainment",
-  "language": "en",
-  "ageLimit": "0",
-  "isLive": false,
-  "wasLive": false,
-  "liveStatus": "not_live",
-  "extractor": "Youtube",
-  "extractorKey": "Youtube",
-  "format": "video/webm",
-  "resolution": "1080p",
-  "fps": "30",
-  "vcodec": "vp9",
-  "acodec": "opus",
-  "filesize": 12345678,
-  "error": null
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "PROCESSING",
+  "sourceUrl": "https://www.youtube.com/watch?v=VIDEO_ID",
+  "sourceType": "YOUTUBE",
+  "destinationType": "TELEGRAM",
+  "userId": "123456789",
+  "chatId": "123456789",
+  "requestedFormat": "mp4",
+  "requestedQuality": "720p",
+  "requestedResolution": "720p",
+  "createdAt": "2024-01-15T10:30:00",
+  "updatedAt": "2024-01-15T10:30:15",
+  "downloadStartedAt": "2024-01-15T10:30:10",
+  "downloadCompletedAt": null,
+  "errorMessage": null
 }
 ```
 
-### Video Formats Response
+### Task Results Response
 ```json
 {
-  "formats": [
+  "results": [
     {
-      "formatId": "22",
-      "extension": "mp4",
-      "resolution": "1280x720",
-      "note": "",
-      "filesize": "50.12MiB",
-      "tbr": "1.2MiB/s",
-      "vcodec": "avc1.4d401f",
-      "acodec": "mp4a.40.2",
-      "fps": "30",
-      "vbr": "1.2MiB/s",
-      "abr": "128k",
-      "asr": "44kHz",
-      "moreInfo": "720p, mp4_dash"
-    },
-    {
-      "formatId": "18",
-      "extension": "mp4",
-      "resolution": "640x360",
-      "note": "",
-      "filesize": "25.06MiB",
-      "tbr": "600KiB/s",
-      "vcodec": "avc1.42001E",
-      "acodec": "mp4a.40.2",
-      "fps": "30",
-      "vbr": "600KiB/s",
-      "abr": "96k",
-      "asr": "44kHz",
-      "moreInfo": "360p, mp4_dash"
+      "id": "result-123",
+      "taskId": "550e8400-e29b-41d4-a716-446655440000",
+      "status": "COMPLETED",
+      "destinationType": "TELEGRAM",
+      "destinationId": "BAADBAADrwADBREAAYag8VZgAAEC",
+      "fileName": "video_title.mp4",
+      "fileSizeBytes": 12345678,
+      "fileFormat": "mp4",
+      "durationSeconds": 225,
+      "resolution": "720p",
+      "bitrate": 1000000,
+      "fps": 30.0,
+      "codec": "h264",
+      "thumbnailUrl": "https://i.ytimg.com/vi/VIDEO_ID/maxresdefault.jpg",
+      "uploadStartedAt": "2024-01-15T10:30:20",
+      "uploadCompletedAt": "2024-01-15T10:30:45",
+      "processingTimeMs": 25000,
+      "uploadTimeMs": 25000,
+      "isPrimaryResult": true
     }
-  ],
-  "error": null,
-  "url": "https://www.youtube.com/watch?v=VIDEO_ID"
+  ]
+}
+```
+
+### Processing Status Response
+```json
+{
+  "availableSlots": 0,
+  "currentlyProcessing": 1,
+  "maxConcurrentTasks": 1,
+  "memoryPressure": "LOW",
+  "freeMemoryMB": 512,
+  "totalMemoryMB": 1024,
+  "memoryUsagePercentage": 50.0
 }
 ```
 
 ## Error Handling
 
-If an error occurs during metadata retrieval, the response will include an `error` field with a descriptive message:
+If an error occurs during task processing, the response will include an `error` field with a descriptive message:
 
 ```json
 {
-  "error": "Error retrieving metadata: Video not found",
-  "title": null,
-  "description": null,
-  ...
+  "success": false,
+  "error": "Failed to create task: Video not found or unavailable",
+  "downloadId": null
+}
+```
+
+Task status responses include error information:
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "FAILED",
+  "errorMessage": "Video is private or unavailable",
+  "retryCount": 1,
+  "maxRetries": 3
 }
 ```
 
@@ -231,18 +231,29 @@ cp env.example .env
 3. Build and run using Docker Compose:
 
 ```bash
-# Development environment (includes Bot API server)
+# Development environment (includes Bot API server and Telegram bot)
 docker-compose -f docker-compose.dev.yml up --build
 
-# Production environment (includes Bot API server)
+# Production environment (includes Bot API server and Telegram bot)
 docker-compose -f docker-compose.prod.yml up --build
 
-# Standard environment (includes Bot API server)
+# Standard environment (includes Bot API server and Telegram bot)
 docker-compose up --build
 
 # Bot API server only (if you want to run it separately)
 docker-compose -f docker-compose.bot-api.yml up -d
 ```
+
+### Telegram Bot
+
+The application includes a Python Telegram bot that provides real-time status updates:
+
+- **Real-time Processing**: Shows live progress with task IDs and status updates
+- **Result Reuse**: Instantly delivers previously downloaded videos
+- **Commands**: `/start`, `/status`, `/help` for user guidance
+- **Error Handling**: Graceful error messages and recovery
+
+The bot automatically polls task status and updates messages in real-time, providing a seamless user experience.
 
 ### Using Maven
 
@@ -269,11 +280,12 @@ Run the tests using Maven:
 mvn test
 ```
 
-The application includes comprehensive tests for the VideoMetadataService covering:
-- Valid YouTube URLs
-- Invalid URLs
-- Null and empty URLs
+The application includes comprehensive tests for the task-based system covering:
+- Task creation and management
+- Result reuse functionality
 - Error handling scenarios
+- Memory-aware processing
+- Extensible architecture components
 
 ## Dependencies
 
@@ -281,12 +293,15 @@ The application includes comprehensive tests for the VideoMetadataService coveri
 - yt-dlp-java 2.0.3
 - PostgreSQL (for data persistence)
 - Lombok (for reducing boilerplate code)
+- Python 3.9+ (for Telegram bot)
+- python-telegram-bot (for bot functionality)
 
 ## Configuration
 
 The application uses Spring Boot's auto-configuration. Key configuration files:
 - `application.properties` - Main configuration
 - `application-docker.properties` - Docker-specific configuration
+- `application-processing.properties` - Processing and memory management configuration
 
 ### Temp Directory Configuration
 
